@@ -6,7 +6,7 @@
 
 - Animated, gold CGL+ digital face with idle, listening, thinking, and speaking states.
 - Android SpeechRecognizer microphone input. The transcript is placed in the compose box so you can review it before sending.
-- Android TextToSpeech replies, voice selection from voices installed on the device, speaking-rate control, and an on/off toggle.
+- Android TextToSpeech replies, voice selection from voices installed on the device, speaking-rate control, and an on/off toggle. The current speech output uses the device's TTS engine; it is not yet connected to the providers' realtime/native audio models.
 - Selectable AI provider: Google Gemini, OpenAI API (the API used by your own app—not the ChatGPT app subscription), or Anthropic Claude.
 - Provider-specific model names and provider-specific API keys.
 - AES-256-GCM encryption through an app-specific key in Android Keystore for saved keys, chat transcript, notes, imported excerpts, and settings values stored through SecureStore.
@@ -35,7 +35,7 @@ Open **Settings** inside Friend, select a provider, enter your own API key, chec
 
 API access, model availability, quotas, and billing depend on the relevant provider account. **ChatGPT and OpenAI API billing are separate.** A ChatGPT Plus/Pro subscription does not automatically include API credits. See OpenAI's billing explanation: https://help.openai.com/en/articles/9039756-managing-billing-for-chatgpt-and-the-api-platform.
 
-You can change the model identifier in Friend settings if your provider account uses a different available model. No API key is included or hard-coded in this project.
+Initial model identifiers are Gemini `gemini-3.8-flash`, OpenAI `gpt-6-luna`, and Claude `claude-sonnet-5-5`. Provider model catalogs change, so you can edit each identifier in Friend settings if a model is unavailable to your account. No API key is included or hard-coded in this project.
 
 ## How Friend's memory works
 
