@@ -4,6 +4,8 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.speech.RecognitionListener
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
@@ -117,11 +119,12 @@ class MainActivity : ComponentActivity() {
         window.navigationBarColor = android.graphics.Color.rgb(16, 16, 15)
         window.decorView.systemUiVisibility = 0
 
+        val mainHandler = Handler(Looper.getMainLooper())
         textToSpeech = TextToSpeech(applicationContext) { result ->
             if (result == TextToSpeech.SUCCESS) {
-                val engine = textToSpeech
-                engine?.language = Locale.getDefault()
-                runOnUiThread {
+                mainHandler.post {
+                    val engine = textToSpeech
+                    engine?.language = Locale.getDefault()
                     ttsReady = engine != null
                     ttsVoiceNames = engine?.voices
                         ?.map { voice -> voice.name }
@@ -705,7 +708,7 @@ private fun FriendAvatar(state: String) {
         drawPath(face, color = if (state == "listening") Gold else Color(0xFFFFE8A1), style = Stroke(width = 1.3.dp.toPx()))
         val eyeY = cy - radius * 0.04f
         val eyeRx = radius * 0.12f
-        val eyeRy = radius * if (state == "thinking") 0.025f else 0.18f
+        val eyeRy = radius * (if (state == "thinking") 0.025f else 0.18f)
         drawOval(Color(0xFF19170F), topLeft = Offset(cx - radius * 0.43f - eyeRx, eyeY - eyeRy), size = Size(eyeRx * 2, eyeRy * 2))
         drawOval(Color(0xFF19170F), topLeft = Offset(cx + radius * 0.43f - eyeRx, eyeY - eyeRy), size = Size(eyeRx * 2, eyeRy * 2))
         if (state != "thinking") {
@@ -720,7 +723,7 @@ private fun FriendAvatar(state: String) {
                 close()
             } else {
                 moveTo(cx - radius * 0.29f, cy + radius * 0.48f)
-                quadraticTo(cx, cy + radius * if (state == "listening") 0.82f else 0.72f, cx + radius * 0.29f, cy + radius * 0.48f)
+                quadraticTo(cx, cy + radius * (if (state == "listening") 0.82f else 0.72f), cx + radius * 0.29f, cy + radius * 0.48f)
             }
         }
         if (state == "speaking") {
