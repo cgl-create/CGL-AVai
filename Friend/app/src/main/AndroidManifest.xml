@@ -7,6 +7,8 @@
     <application
         android:allowBackup="false"
         android:label="Friend by CGL+"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:supportsRtl="true"
         android:usesCleartextTraffic="false"
         android:theme="@android:style/Theme.Material.Light.NoActionBar">
