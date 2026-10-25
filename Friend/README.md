@@ -20,10 +20,10 @@
 2. In Android Studio, choose **Open** and select the **Friend** folder (not app/).
 3. Use JDK 17 and install Android SDK Platform 36 when prompted.
 4. Let Android Studio sync the Gradle project and resolve dependencies.
-5. Select the app run configuration, select an Android device or emulator, and press **Run**.
+5. Select the app run configuration, select an Android device or emulator, and press **Run**. The Gradle wrapper is included for command-line builds.
 6. Accept the microphone permission when using voice input.
 
-The project uses Android Gradle Plugin 8.13.2, Kotlin 2.2.20, compile SDK 36, min SDK 26, and Jetpack Compose. It was added as source files through the GitHub repository. A local Android SDK/Gradle build has **not** been executed in this environment, so treat the first Android Studio sync/build as a required verification step. The project currently does not contain the binary Gradle Wrapper JAR; if Android Studio asks for a Gradle distribution, use a compatible Gradle 8.13 installation/distribution. Do not commit API keys or Gradle caches.
+The project uses Android Gradle Plugin 8.13.2, Kotlin 2.2.20, compile SDK 36, min SDK 26, Jetpack Compose, and the official Gradle 8.13 wrapper. A local Android SDK build has **not** been executed in this environment, so treat the first Android Studio sync/build as a required verification step. From the Friend folder, the debug APK build command is ./gradlew :app:assembleDebug. Do not commit API keys or Gradle caches.
 
 ## Configure an AI provider
 
