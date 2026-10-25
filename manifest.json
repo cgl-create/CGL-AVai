@@ -1,0 +1,10 @@
+{
+  "name": "AVai by CGL+ — Wellbeing Companion",
+  "short_name": "AVai",
+  "description": "A voice-enabled AI wellbeing companion by CGL+.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#10100f",
+  "theme_color": "#10100f"
+}
