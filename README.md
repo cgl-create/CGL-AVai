@@ -1,4 +1,20 @@
-# AVai by CGL+ — Voice-enabled wellbeing companion
+# CGL+ AVai / Friend
+
+## Native Android app — Friend
+
+The Android Studio project lives in [Friend/](./Friend/). Open the Friend folder in Android Studio to configure and build the native Kotlin app. It includes an animated face, Android microphone transcription, spoken replies using Android TextToSpeech, and provider selection for Gemini, OpenAI API, or Claude.
+
+Friend also has encrypted on-device API-key storage, persistent chat history, editable memory notes, and an importer for text from extracted ChatGPT JSON exports and text transcripts.
+
+- [Android project setup and safety notes](./Friend/README.md)
+- [Native app UI](./Friend/app/src/main/java/com/cgl/friend/MainActivity.kt)
+- [AI provider API client](./Friend/app/src/main/java/com/cgl/friend/AiClient.kt)
+- [Encrypted local storage](./Friend/app/src/main/java/com/cgl/friend/SecureStore.kt)
+- [Memory importer](./Friend/app/src/main/java/com/cgl/friend/MemoryImporter.kt)
+
+**Memory limitation:** Friend cannot automatically access your ChatGPT account history or saved memories via an API key. To bring in older conversations, request a ChatGPT data export, extract conversations.json, and import it in Friend's Memory screen. API usage is billed separately by the provider.
+
+## AVai web app
 
 AVai is a static, mobile-friendly web app with an animated digital face, speech input, spoken replies, selectable browser voices, and tone preferences. It is a supportive AI companion—not a therapist, clinician, or emergency service.
 
