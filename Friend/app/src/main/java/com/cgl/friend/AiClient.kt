@@ -9,7 +9,6 @@ import java.io.InputStream
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
 
 enum class AIProvider(val label: String, val keyName: String, val defaultModel: String) {
     GEMINI("Google Gemini", "api_key_gemini", "gemini-2.5-flash"),
@@ -80,11 +79,7 @@ $memory
         instructions: String,
         history: List<ChatMessage>
     ): String {
-        val encodedKey = URLEncoder.encode(key, Charsets.UTF_8.name())
         val cleanModel = model.trim().ifBlank { AIProvider.GEMINI.defaultModel }
-        val url = "https://generativelanguage.googleapis.com/v1beta/models/" +
-            URLEncoder.encode(cleanModel, Charsets.UTF_8.name()) +
-            ":generateContent?key=" + encodedKey
         val contents = JSONArray()
         history.forEach { message ->
             val item = JSONObject()
@@ -98,10 +93,10 @@ $memory
             .put("generationConfig", JSONObject().put("temperature", 0.7).put("maxOutputTokens", 900))
         val result = request(
             "https://generativelanguage.googleapis.com/v1beta/models/" +
-                URLEncoder.encode(cleanModel, Charsets.UTF_8.name()) +
-                ":generateContent?key=" + encodedKey,
+                cleanModel +
+                ":generateContent",
             "POST",
-            mapOf("Content-Type" to "application/json"),
+            mapOf("Content-Type" to "application/json", "x-goog-api-key" to key),
             body.toString()
         )
         val candidates = result.optJSONArray("candidates")
