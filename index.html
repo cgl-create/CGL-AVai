@@ -48,15 +48,17 @@
     .orbit { position:absolute; width:91%; height:91%; border:1px solid rgba(242,201,76,.18); border-radius:50%; transform:rotate(-22deg) scaleY(.66); animation:orbit 16s linear infinite; }
     .orbit:after { content:""; position:absolute; top:12%; left:9%; width:7px; height:7px; border-radius:50%; background:var(--yellow); box-shadow:0 0 17px var(--yellow); }
     .avatar { width:76%; max-width:260px; position:relative; z-index:1; filter:drop-shadow(0 14px 28px rgba(0,0,0,.35)); animation:float 5s ease-in-out infinite; }
-    .face-shell { fill:url(#faceGlow); stroke:rgba(255,255,255,.5); stroke-width:1.2; }
-    .eye { transform-box:fill-box; transform-origin:center; fill:#181712; }
-    .eye-glint { fill:#fff6cc; }
-    .mouth { fill:none; stroke:#1a1811; stroke-width:5; stroke-linecap:round; transition:all .2s ease; }
-    #avatar[data-state="listening"] .face-shell { stroke:var(--yellow); filter:drop-shadow(0 0 13px rgba(242,201,76,.55)); }
-    #avatar[data-state="listening"] .orbit { animation-duration:4s; }
+    .face-shell { fill:url(#faceGlow); stroke:rgba(139,233,240,.72); stroke-width:1.5; transition:stroke .25s, filter .25s; }
+    .eye { transform-box:fill-box; transform-origin:center; fill:#9cf5fa; filter:drop-shadow(0 0 5px rgba(139,233,240,.85)); animation:blink 6s infinite; }
+    .eye-glint { fill:#fff; }
+    .mouth { fill:none; stroke:var(--yellow); stroke-width:4.5; stroke-linecap:round; transition:all .2s ease; }
+    #avatar[data-state="listening"] .face-shell { stroke:#9cf5fa; filter:drop-shadow(0 0 16px rgba(139,233,240,.65)); }
+    #avatar[data-state="listening"] .orbit { animation-duration:4s; border-color:rgba(139,233,240,.48); }
+    #avatar[data-state="listening"] .eye { fill:#d5ffff; }
     #avatar[data-state="speaking"] .mouth { animation:talk .2s ease-in-out infinite alternate; }
-    #avatar[data-state="thinking"] { animation:thinking 1.2s ease-in-out infinite; }
-    #avatar[data-state="thinking"] .eye { transform:scaleY(.72); }
+    #avatar[data-state="thinking"] .eye { transform:translateY(-2px) scaleY(.78); }
+    #avatar[data-state="thinking"] .face-shell { stroke:rgba(242,201,76,.95); }
+    @keyframes blink { 0%,45%,48%,72%,75%,100% { transform:scaleY(1); } 46.5%,73.5% { transform:scaleY(.12); } }
     .status-row { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:.85rem; }
     .status-dot { width:7px; height:7px; border-radius:50%; background:#777; }
     .status-dot.live { background:var(--yellow); box-shadow:0 0 12px rgba(242,201,76,.7); }
@@ -180,30 +182,35 @@
         <div class="avatar-stage" aria-label="Animated digital face">
           <div class="halo"></div>
           <div class="orbit"></div>
-          <svg class="avatar" id="avatar" data-state="idle" viewBox="0 0 260 280" role="img" aria-label="AVai animated digital face">
+          <svg class="avatar" id="avatar" data-state="idle" viewBox="0 0 260 280" role="img" aria-label="AVai floating animated digital face">
             <defs>
               <linearGradient id="faceGlow" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#f6dd83"/><stop offset=".48" stop-color="#d6ae38"/><stop offset="1" stop-color="#9c7924"/>
+                <stop offset="0" stop-color="#263d40"/><stop offset=".52" stop-color="#0c1517"/><stop offset="1" stop-color="#182526"/>
               </linearGradient>
               <linearGradient id="faceShade" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#fff4c4" stop-opacity=".48"/><stop offset="1" stop-color="#fff4c4" stop-opacity="0"/>
+                <stop offset="0" stop-color="#d8ffff" stop-opacity=".18"/><stop offset="1" stop-color="#d8ffff" stop-opacity="0"/>
               </linearGradient>
+              <radialGradient id="eyeGlow">
+                <stop offset="0" stop-color="#9cf5fa" stop-opacity=".48"/><stop offset="1" stop-color="#9cf5fa" stop-opacity="0"/>
+              </radialGradient>
               <filter id="softGlow"><feGaussianBlur stdDeviation="12"/></filter>
             </defs>
-            <ellipse cx="130" cy="142" rx="94" ry="104" fill="#f2c94c" opacity=".12" filter="url(#softGlow)"/>
-            <path class="face-shell" d="M130 23 C76 23 43 63 43 123 L43 152 C43 211 80 252 130 252 C180 252 217 211 217 152 L217 123 C217 63 184 23 130 23Z"/>
-            <path d="M130 28 C79 28 49 66 49 123 L49 141 C66 111 99 102 130 101 C163 101 194 113 211 141 L211 123 C211 66 181 28 130 28Z" fill="url(#faceShade)" opacity=".7"/>
-            <path d="M35 125 Q23 123 26 143 Q28 160 44 161 M225 125 Q237 123 234 143 Q232 160 216 161" fill="none" stroke="#dfbd58" stroke-width="5" stroke-linecap="round"/>
-            <ellipse cx="93" cy="139" rx="17" ry="22" fill="#f9e8a7" opacity=".26"/>
-            <ellipse cx="167" cy="139" rx="17" ry="22" fill="#f9e8a7" opacity=".26"/>
-            <ellipse class="eye" cx="93" cy="139" rx="7.5" ry="11.5"/>
-            <ellipse class="eye" cx="167" cy="139" rx="7.5" ry="11.5"/>
-            <circle class="eye-glint" cx="95.5" cy="135" r="2.8"/>
-            <circle class="eye-glint" cx="169.5" cy="135" r="2.8"/>
-            <path d="M75 118 Q93 108 110 118 M150 118 Q167 108 185 118" fill="none" stroke="#8b6c23" stroke-width="3.4" stroke-linecap="round" opacity=".8"/>
-            <path class="mouth" id="mouth" d="M105 184 Q130 201 155 184"/>
-            <path d="M95 218 Q130 234 165 218" fill="none" stroke="#fff0b3" stroke-width="2" opacity=".6"/>
-            <circle cx="62" cy="181" r="3" fill="#fff0b3" opacity=".55"/><circle cx="198" cy="181" r="3" fill="#fff0b3" opacity=".55"/>
+            <ellipse cx="130" cy="142" rx="94" ry="91" fill="#8be9f0" opacity=".12" filter="url(#softGlow)"/>
+            <ellipse cx="130" cy="142" rx="105" ry="112" fill="none" stroke="#f2c94c" stroke-opacity=".22" stroke-width="1.2"/>
+            <path class="face-shell" d="M130 38 C79 38 43 67 43 116 C43 139 49 161 58 182 C73 218 99 239 130 239 C161 239 187 218 202 182 C211 161 217 139 217 116 C217 67 181 38 130 38Z"/>
+            <path d="M130 43 C83 43 50 70 50 116 C50 132 53 143 58 153 C76 127 99 117 130 117 C161 117 184 127 202 153 C207 143 210 132 210 116 C210 70 177 43 130 43Z" fill="url(#faceShade)"/>
+            <path d="M63 86 Q89 55 130 56 Q171 55 197 86" fill="none" stroke="#d5fbfc" stroke-opacity=".2" stroke-width="2" stroke-linecap="round"/>
+            <ellipse cx="92" cy="137" rx="25" ry="29" fill="url(#eyeGlow)"/>
+            <ellipse cx="168" cy="137" rx="25" ry="29" fill="url(#eyeGlow)"/>
+            <ellipse class="eye" cx="92" cy="137" rx="8.5" ry="13"/>
+            <ellipse class="eye" cx="168" cy="137" rx="8.5" ry="13"/>
+            <circle class="eye-glint" cx="89" cy="132" r="3.2"/>
+            <circle class="eye-glint" cx="165" cy="132" r="3.2"/>
+            <path d="M70 112 Q91 101 111 111 M149 111 Q169 101 190 112" fill="none" stroke="#f2c94c" stroke-opacity=".78" stroke-width="3" stroke-linecap="round"/>
+            <path class="mouth" id="mouth" d="M108 184 Q130 198 152 184"/>
+            <path d="M104 215 Q130 224 156 215" fill="none" stroke="#8be9f0" stroke-opacity=".25" stroke-width="1.8" stroke-linecap="round"/>
+            <circle cx="51" cy="165" r="3" fill="#f2c94c" opacity=".85"/>
+            <circle cx="209" cy="165" r="3" fill="#8be9f0" opacity=".9"/>
           </svg>
         </div>
 
