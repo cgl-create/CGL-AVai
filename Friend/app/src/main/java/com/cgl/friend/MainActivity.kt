@@ -668,171 +668,90 @@ private fun FriendApp(activity: MainActivity) {
 
 @Composable
 private fun FriendAvatar(state: String) {
-    val transition = rememberInfiniteTransition(label = "friend-face")
-    val pulse by transition.animateFloat(
-        initialValue = 0.94f,
-        targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(1700),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "face-glow"
-    )
+    val transition = rememberInfiniteTransition(label = "friend-features")
     val floatY by transition.animateFloat(
-        initialValue = -3.5f,
-        targetValue = 3.5f,
+        initialValue = -3f,
+        targetValue = 3f,
         animationSpec = infiniteRepeatable(
             animation = tween(2400),
             repeatMode = RepeatMode.Reverse
         ),
-        label = "face-float"
+        label = "features-float"
     )
+    val blinkScale by transition.animateFloat(
+        initialValue = 1f,
+        targetValue = 0.10f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 120, delayMillis = 2700),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "eye-blink"
+    )
+    val speakingMouthHeight by transition.animateFloat(
+        initialValue = 4f,
+        targetValue = 13f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(190),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "speaking-mouth"
+    )
+
     val listening = state == "listening"
     val speaking = state == "speaking"
     val thinking = state == "thinking"
-    val eyeHeight = when {
-        thinking -> 5f
-        listening -> 13f
-        else -> 10f
-    }
 
     Canvas(Modifier.size(190.dp)) {
         val cx = size.width / 2f
         val baseY = size.height / 2f + floatY * (size.minDimension / 160f)
         val unit = size.minDimension / 160f
         fun u(v: Float) = v * unit
-        val faceWidth = u(108f)
-        val faceHeight = u(91f)
-        val left = cx - faceWidth / 2f
-        val top = baseY - faceHeight / 2f
-        val faceSize = Size(faceWidth, faceHeight)
-        val corner = androidx.compose.ui.geometry.CornerRadius(u(34f), u(34f))
-        val glowColor = if (listening) Color(0xFF8BE9F0) else Gold
 
-        // A floating face only: no neck, torso, limbs, ears, or robot casing.
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = listOf(glowColor.copy(alpha = 0.19f * pulse), Color(0xFF6DDDE8).copy(alpha = 0.07f), Color.Transparent),
-                center = Offset(cx, baseY),
-                radius = u(84f)
-            ),
-            radius = u(84f),
-            center = Offset(cx, baseY)
-        )
-        drawOval(
-            color = Gold.copy(alpha = if (listening || speaking) 0.42f else 0.20f),
-            topLeft = Offset(cx - u(71f), baseY - u(58f)),
-            size = Size(u(142f), u(116f)),
-            style = Stroke(width = u(1f))
-        )
+        // Nothing is drawn except the eyes and mouth: no head, shell, ring, brows, or particles.
+        val eyeY = baseY - u(12f)
+        val eyeOffset = u(32f)
+        val eyeWidth = u(18f)
+        val naturalEyeHeight = when {
+            thinking -> 7f
+            listening -> 13f
+            else -> 10f
+        }
+        val eyeHeight = u(naturalEyeHeight) * blinkScale
+        val featureColor = if (listening) Color(0xFF9CF5FA) else Gold
 
-        // Soft, organic glass face with a fine CGL+ gold rim.
-        drawRoundRect(
-            brush = Brush.linearGradient(
-                colors = listOf(Color(0xFF222C2E), Color(0xFF090D0E), Color(0xFF151B1B)),
-                start = Offset(left, top),
-                end = Offset(left + faceWidth, top + faceHeight)
-            ),
-            topLeft = Offset(left, top),
-            size = faceSize,
-            cornerRadius = corner
-        )
-        drawRoundRect(
-            color = glowColor.copy(alpha = if (listening || speaking) 0.90f else 0.62f),
-            topLeft = Offset(left, top),
-            size = faceSize,
-            cornerRadius = corner,
-            style = Stroke(width = u(1.4f))
-        )
-        drawRoundRect(
-            color = Color.White.copy(alpha = 0.055f),
-            topLeft = Offset(left + u(8f), top + u(7f)),
-            size = Size(faceWidth - u(16f), u(18f)),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(14f), u(14f))
-        )
-
-        // Expressive eyes. A tiny offset makes the thinking face look away thoughtfully.
-        val eyeY = baseY - u(if (thinking) 9f else 7f)
-        val eyeOffset = u(23f)
-        val eyeW = u(if (listening) 17f else 15f)
-        val eyeH = u(eyeHeight)
-        val gaze = if (thinking) u(3f) else 0f
-        val eyeColor = if (listening) Color(0xFF9CF5FA) else Color(0xFFFFD966)
         for (side in listOf(-1f, 1f)) {
-            val eye = Offset(cx + side * eyeOffset + gaze, eyeY)
+            val eyeX = cx + side * eyeOffset
             drawRoundRect(
-                color = eyeColor.copy(alpha = 0.15f * pulse),
-                topLeft = Offset(eye.x - eyeW, eye.y - eyeH * 1.25f),
-                size = Size(eyeW * 2f, eyeH * 2.5f),
+                color = featureColor,
+                topLeft = Offset(eyeX - eyeWidth / 2f, eyeY - eyeHeight / 2f),
+                size = Size(eyeWidth, eyeHeight),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(8f), u(8f))
+            )
+        }
+
+        if (speaking) {
+            val mouthHeight = u(speakingMouthHeight)
+            drawRoundRect(
+                color = Gold,
+                topLeft = Offset(cx - u(16f), baseY + u(27f) - mouthHeight / 2f),
+                size = Size(u(32f), mouthHeight),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(9f), u(9f))
             )
-            drawRoundRect(
-                color = eyeColor,
-                topLeft = Offset(eye.x - eyeW / 2f, eye.y - eyeH / 2f),
-                size = Size(eyeW, eyeH),
-                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(7f), u(7f))
-            )
-            drawCircle(
-                color = Color.White.copy(alpha = 0.85f),
-                radius = u(1.5f),
-                center = Offset(eye.x - u(3f), eye.y - u(1.5f))
-            )
-        }
-
-        // Subtle brows give the face more personality without adding a body or hardware.
-        val browY = eyeY - u(12f)
-        for (side in listOf(-1f, 1f)) {
-            val tilt = if (thinking && side > 0f) u(3f) else 0f
-            drawLine(
-                color = Gold.copy(alpha = 0.70f),
-                start = Offset(cx + side * u(31f), browY + tilt),
-                end = Offset(cx + side * u(15f), browY - tilt),
-                strokeWidth = u(1.8f),
-                cap = StrokeCap.Round
-            )
-        }
-
-        // Mouth: animated-looking equalizer while speaking, friendly smile otherwise.
-        if (speaking) {
-            val heights = listOf(4f, 7f, 11f, 6f, 13f, 8f, 4f)
-            heights.forEachIndexed { index, h ->
-                val varied = h * (0.75f + (pulse - 0.94f) * 1.6f)
-                val x = cx - u(15f) + index * u(5f)
-                drawLine(
-                    color = if (index % 2 == 0) Color(0xFF9CF5FA) else Gold,
-                    start = Offset(x, baseY + u(26f) - u(varied) / 2f),
-                    end = Offset(x, baseY + u(26f) + u(varied) / 2f),
-                    strokeWidth = u(2.2f),
-                    cap = StrokeCap.Round
-                )
-            }
         } else {
-            val mouth = Path().apply {
-                moveTo(cx - u(13f), baseY + u(23f))
+            val smile = Path().apply {
+                moveTo(cx - u(16f), baseY + u(25f))
                 cubicTo(
-                    cx - u(6f), baseY + u(if (listening) 32f else 30f),
-                    cx + u(6f), baseY + u(if (listening) 32f else 30f),
-                    cx + u(13f), baseY + u(23f)
+                    cx - u(8f), baseY + u(if (listening) 36f else 34f),
+                    cx + u(8f), baseY + u(if (listening) 36f else 34f),
+                    cx + u(16f), baseY + u(25f)
                 )
             }
             drawPath(
-                path = mouth,
-                color = if (listening) Color(0xFF9CF5FA) else Gold,
-                style = Stroke(width = u(2.3f), cap = StrokeCap.Round)
+                path = smile,
+                color = featureColor,
+                style = Stroke(width = u(2.6f), cap = StrokeCap.Round)
             )
         }
-
-        // A few tiny floating particles, deliberately detached from any body silhouette.
-        drawCircle(
-            color = glowColor.copy(alpha = 0.82f * pulse),
-            radius = u(2f),
-            center = Offset(cx - u(69f), baseY - u(16f))
-        )
-        drawCircle(
-            color = Color(0xFF8BE9F0).copy(alpha = 0.75f * pulse),
-            radius = u(1.5f),
-            center = Offset(cx + u(68f), baseY + u(15f))
-        )
     }
 }
 
