@@ -43,22 +43,17 @@
     .eyebrow { color:var(--yellow); font-size:.72rem; letter-spacing:.16em; text-transform:uppercase; font-weight:800; }
     .presence-heading { text-align:center; margin-top:9px; font-size:1.55rem; letter-spacing:-.045em; font-weight:750; }
     .presence-desc { text-align:center; max-width:290px; color:var(--muted); font-size:.88rem; line-height:1.55; margin-top:8px; }
-    .avatar-stage { width:min(100%, 340px); aspect-ratio:1; display:grid; place-items:center; position:relative; margin:2px 0; }
-    .halo { position:absolute; width:84%; height:84%; border-radius:50%; background:radial-gradient(circle, rgba(242,201,76,.14), rgba(242,201,76,.035) 47%, transparent 70%); filter:blur(7px); animation:halo 5s ease-in-out infinite; }
-    .orbit { position:absolute; width:91%; height:91%; border:1px solid rgba(242,201,76,.18); border-radius:50%; transform:rotate(-22deg) scaleY(.66); animation:orbit 16s linear infinite; }
-    .orbit:after { content:""; position:absolute; top:12%; left:9%; width:7px; height:7px; border-radius:50%; background:var(--yellow); box-shadow:0 0 17px var(--yellow); }
-    .avatar { width:76%; max-width:260px; position:relative; z-index:1; filter:drop-shadow(0 14px 28px rgba(0,0,0,.35)); animation:float 5s ease-in-out infinite; }
-    .face-shell { fill:url(#faceGlow); stroke:rgba(139,233,240,.72); stroke-width:1.5; transition:stroke .25s, filter .25s; }
-    .eye { transform-box:fill-box; transform-origin:center; fill:#9cf5fa; filter:drop-shadow(0 0 5px rgba(139,233,240,.85)); animation:blink 6s infinite; }
-    .eye-glint { fill:#fff; }
-    .mouth { fill:none; stroke:var(--yellow); stroke-width:4.5; stroke-linecap:round; transition:all .2s ease; }
-    #avatar[data-state="listening"] .face-shell { stroke:#9cf5fa; filter:drop-shadow(0 0 16px rgba(139,233,240,.65)); }
-    #avatar[data-state="listening"] .orbit { animation-duration:4s; border-color:rgba(139,233,240,.48); }
-    #avatar[data-state="listening"] .eye { fill:#d5ffff; }
-    #avatar[data-state="speaking"] .mouth { animation:talk .2s ease-in-out infinite alternate; }
-    #avatar[data-state="thinking"] .eye { transform:translateY(-2px) scaleY(.78); }
-    #avatar[data-state="thinking"] .face-shell { stroke:rgba(242,201,76,.95); }
-    @keyframes blink { 0%,45%,48%,72%,75%,100% { transform:scaleY(1); } 46.5%,73.5% { transform:scaleY(.12); } }
+    .avatar-stage { width:min(100%, 300px); aspect-ratio:1; display:grid; place-items:center; position:relative; margin:2px 0; }
+    /* AVai is represented by just two animated eyes and a mouth. */
+    .avatar { width:76%; max-width:260px; position:relative; z-index:1; overflow:visible; animation:float 5s ease-in-out infinite; }
+    .eye { transform-box:fill-box; transform-origin:center; fill:#9cf5fa; filter:drop-shadow(0 0 7px rgba(139,233,240,.9)); animation:blink 5.8s infinite; }
+    .mouth-line { fill:none; stroke:var(--yellow); stroke-width:4.5; stroke-linecap:round; transition:opacity .15s ease; }
+    .mouth-open { display:none; fill:rgba(242,201,76,.12); stroke:var(--yellow); stroke-width:4.5; }
+    #avatar[data-state="listening"] .eye { fill:#d5ffff; filter:drop-shadow(0 0 12px rgba(139,233,240,1)); }
+    #avatar[data-state="speaking"] .mouth-line { display:none; }
+    #avatar[data-state="speaking"] .mouth-open { display:block; animation:talk .2s ease-in-out infinite alternate; transform-box:fill-box; transform-origin:center; }
+    #avatar[data-state="thinking"] .eye { transform:scaleY(.68); }
+    @keyframes blink { 0%,45%,48%,72%,75%,100% { transform:scaleY(1); } 46.5%,73.5% { transform:scaleY(.08); } }
     .status-row { display:flex; align-items:center; justify-content:center; gap:8px; color:var(--muted); font-size:.85rem; }
     .status-dot { width:7px; height:7px; border-radius:50%; background:#777; }
     .status-dot.live { background:var(--yellow); box-shadow:0 0 12px rgba(242,201,76,.7); }
@@ -179,38 +174,12 @@
           <div class="presence-desc">A calm place to talk things through, at your pace. You can speak or type.</div>
         </div>
 
-        <div class="avatar-stage" aria-label="Animated digital face">
-          <div class="halo"></div>
-          <div class="orbit"></div>
-          <svg class="avatar" id="avatar" data-state="idle" viewBox="0 0 260 280" role="img" aria-label="AVai floating animated digital face">
-            <defs>
-              <linearGradient id="faceGlow" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#263d40"/><stop offset=".52" stop-color="#0c1517"/><stop offset="1" stop-color="#182526"/>
-              </linearGradient>
-              <linearGradient id="faceShade" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0" stop-color="#d8ffff" stop-opacity=".18"/><stop offset="1" stop-color="#d8ffff" stop-opacity="0"/>
-              </linearGradient>
-              <radialGradient id="eyeGlow">
-                <stop offset="0" stop-color="#9cf5fa" stop-opacity=".48"/><stop offset="1" stop-color="#9cf5fa" stop-opacity="0"/>
-              </radialGradient>
-              <filter id="softGlow"><feGaussianBlur stdDeviation="12"/></filter>
-            </defs>
-            <ellipse cx="130" cy="142" rx="94" ry="91" fill="#8be9f0" opacity=".12" filter="url(#softGlow)"/>
-            <ellipse cx="130" cy="142" rx="105" ry="112" fill="none" stroke="#f2c94c" stroke-opacity=".22" stroke-width="1.2"/>
-            <path class="face-shell" d="M130 38 C79 38 43 67 43 116 C43 139 49 161 58 182 C73 218 99 239 130 239 C161 239 187 218 202 182 C211 161 217 139 217 116 C217 67 181 38 130 38Z"/>
-            <path d="M130 43 C83 43 50 70 50 116 C50 132 53 143 58 153 C76 127 99 117 130 117 C161 117 184 127 202 153 C207 143 210 132 210 116 C210 70 177 43 130 43Z" fill="url(#faceShade)"/>
-            <path d="M63 86 Q89 55 130 56 Q171 55 197 86" fill="none" stroke="#d5fbfc" stroke-opacity=".2" stroke-width="2" stroke-linecap="round"/>
-            <ellipse cx="92" cy="137" rx="25" ry="29" fill="url(#eyeGlow)"/>
-            <ellipse cx="168" cy="137" rx="25" ry="29" fill="url(#eyeGlow)"/>
-            <ellipse class="eye" cx="92" cy="137" rx="8.5" ry="13"/>
-            <ellipse class="eye" cx="168" cy="137" rx="8.5" ry="13"/>
-            <circle class="eye-glint" cx="89" cy="132" r="3.2"/>
-            <circle class="eye-glint" cx="165" cy="132" r="3.2"/>
-            <path d="M70 112 Q91 101 111 111 M149 111 Q169 101 190 112" fill="none" stroke="#f2c94c" stroke-opacity=".78" stroke-width="3" stroke-linecap="round"/>
-            <path class="mouth" id="mouth" d="M108 184 Q130 198 152 184"/>
-            <path d="M104 215 Q130 224 156 215" fill="none" stroke="#8be9f0" stroke-opacity=".25" stroke-width="1.8" stroke-linecap="round"/>
-            <circle cx="51" cy="165" r="3" fill="#f2c94c" opacity=".85"/>
-            <circle cx="209" cy="165" r="3" fill="#8be9f0" opacity=".9"/>
+        <div class="avatar-stage" aria-label="AVai animated eyes and mouth">
+          <svg class="avatar" id="avatar" data-state="idle" viewBox="0 0 260 150" role="img" aria-label="Two animated eyes and a mouth">
+            <ellipse class="eye" cx="82" cy="62" rx="9" ry="14"/>
+            <ellipse class="eye" cx="178" cy="62" rx="9" ry="14"/>
+            <path class="mouth-line" d="M110 104 Q130 119 150 104"/>
+            <ellipse class="mouth-open" cx="130" cy="108" rx="16" ry="5"/>
           </svg>
         </div>
 
