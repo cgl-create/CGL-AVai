@@ -670,67 +670,194 @@ private fun FriendApp(activity: MainActivity) {
 private fun FriendAvatar(state: String) {
     val transition = rememberInfiniteTransition(label = "friend-avatar")
     val pulse by transition.animateFloat(
-        initialValue = 0.88f,
+        initialValue = 0.92f,
         targetValue = 1.06f,
-        animationSpec = infiniteRepeatable(animation = tween(2100), repeatMode = RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(
+            animation = tween(1800),
+            repeatMode = RepeatMode.Reverse
+        ),
         label = "avatar-pulse"
     )
-    Canvas(Modifier.size(160.dp)) {
+    val isActive = state == "listening" || state == "speaking"
+    val eyeHeight = when (state) {
+        "thinking" -> 5.5f
+        "listening" -> 13.5f
+        else -> 10.5f
+    }
+
+    Canvas(Modifier.size(176.dp)) {
         val cx = size.width / 2f
         val cy = size.height / 2f
-        val radius = size.minDimension * 0.40f
-        val glowAlpha = if (state == "listening" || state == "speaking") 0.24f else 0.13f
+        val unit = size.minDimension / 160f
+        fun u(value: Float) = value * unit
+        val shellLeft = cx - u(49f)
+        val shellTop = cy - u(56f)
+        val shellSize = Size(u(98f), u(112f))
+        val visorLeft = cx - u(41f)
+        val visorTop = cy - u(40f)
+        val visorSize = Size(u(82f), u(72f))
+        val glow = if (isActive) 0.22f * pulse else 0.10f * pulse
+
+        // Soft halo and a restrained orbital ring keep the face readable on dark UI.
         drawCircle(
             brush = Brush.radialGradient(
-                colors = listOf(Gold.copy(alpha = glowAlpha * pulse), Gold.copy(alpha = 0.02f), Color.Transparent),
+                colors = listOf(Gold.copy(alpha = glow), Color(0xFF70DCE8).copy(alpha = glow * 0.20f), Color.Transparent),
                 center = Offset(cx, cy),
-                radius = radius * 1.8f
+                radius = u(83f)
             ),
-            radius = radius * 1.8f,
+            radius = u(83f),
             center = Offset(cx, cy)
         )
         drawCircle(
-            color = Gold.copy(alpha = 0.20f),
-            radius = radius * 1.23f,
+            color = Gold.copy(alpha = if (isActive) 0.48f else 0.20f),
+            radius = u(64f),
             center = Offset(cx, cy),
-            style = Stroke(width = 1.2.dp.toPx())
+            style = Stroke(width = u(1f))
         )
-        drawCircle(color = Gold.copy(alpha = 0.50f), radius = 3.dp.toPx(), center = Offset(cx - radius * 0.82f, cy - radius * 0.68f))
-        val face = Path().apply {
-            moveTo(cx, cy - radius * 1.03f)
-            cubicTo(cx - radius * 0.92f, cy - radius * 1.02f, cx - radius * 1.02f, cy - radius * 0.28f, cx - radius * 0.93f, cy + radius * 0.38f)
-            cubicTo(cx - radius * 0.83f, cy + radius * 1.04f, cx - radius * 0.42f, cy + radius * 1.18f, cx, cy + radius * 1.13f)
-            cubicTo(cx + radius * 0.42f, cy + radius * 1.18f, cx + radius * 0.83f, cy + radius * 1.04f, cx + radius * 0.93f, cy + radius * 0.38f)
-            cubicTo(cx + radius * 1.02f, cy - radius * 0.28f, cx + radius * 0.92f, cy - radius * 1.02f, cx, cy - radius * 1.03f)
-            close()
+
+        // Compact rounded robot shell, with a dark glass display instead of a flat emoji face.
+        drawRoundRect(
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF35352F), Color(0xFF171815), Color(0xFF292920)),
+                start = Offset(shellLeft, shellTop),
+                end = Offset(shellLeft + shellSize.width, shellTop + shellSize.height)
+            ),
+            topLeft = Offset(shellLeft, shellTop),
+            size = shellSize,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(25f), u(25f))
+        )
+        drawRoundRect(
+            color = Gold.copy(alpha = if (isActive) 0.95f else 0.64f),
+            topLeft = Offset(shellLeft, shellTop),
+            size = shellSize,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(25f), u(25f)),
+            style = Stroke(width = u(1.5f))
+        )
+
+        // Small side sensor pods make the silhouette feel like a designed device.
+        for (side in listOf(-1f, 1f)) {
+            drawRoundRect(
+                color = Color(0xFF44443A),
+                topLeft = Offset(cx + side * u(48f) - u(3f), cy - u(15f)),
+                size = Size(u(6f), u(25f)),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(3f), u(3f))
+            )
+            drawCircle(
+                color = if (state == "listening") Color(0xFF8BE9F0) else Gold.copy(alpha = 0.82f),
+                radius = u(1.8f),
+                center = Offset(cx + side * u(51f), cy - u(3f))
+            )
         }
-        drawPath(face, brush = Brush.linearGradient(listOf(Color(0xFFF8E69F), Gold, Color(0xFFB58D27)), start = Offset(cx - radius, cy - radius), end = Offset(cx + radius, cy + radius)))
-        drawPath(face, color = if (state == "listening") Gold else Color(0xFFFFE8A1), style = Stroke(width = 1.3.dp.toPx()))
-        val eyeY = cy - radius * 0.04f
-        val eyeRx = radius * 0.12f
-        val eyeRy = radius * (if (state == "thinking") 0.025f else 0.18f)
-        drawOval(Color(0xFF19170F), topLeft = Offset(cx - radius * 0.43f - eyeRx, eyeY - eyeRy), size = Size(eyeRx * 2, eyeRy * 2))
-        drawOval(Color(0xFF19170F), topLeft = Offset(cx + radius * 0.43f - eyeRx, eyeY - eyeRy), size = Size(eyeRx * 2, eyeRy * 2))
-        if (state != "thinking") {
-            drawCircle(Color.White.copy(alpha = 0.95f), 1.8.dp.toPx(), Offset(cx - radius * 0.43f + eyeRx * 0.22f, eyeY - eyeRy * 0.38f))
-            drawCircle(Color.White.copy(alpha = 0.95f), 1.8.dp.toPx(), Offset(cx + radius * 0.43f + eyeRx * 0.22f, eyeY - eyeRy * 0.38f))
+
+        // Top status light and fine casing details.
+        drawRoundRect(
+            color = Color(0xFF0D0E0D),
+            topLeft = Offset(cx - u(15f), cy - u(48f)),
+            size = Size(u(30f), u(4f)),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(2f), u(2f))
+        )
+        drawRoundRect(
+            color = if (state == "listening") Color(0xFF8BE9F0) else Gold.copy(alpha = pulse),
+            topLeft = Offset(cx - u(7f), cy - u(48f)),
+            size = Size(u(14f), u(4f)),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(2f), u(2f))
+        )
+
+        // Glossy visor with a subtle upper reflection.
+        drawRoundRect(
+            brush = Brush.linearGradient(
+                colors = listOf(Color(0xFF080C0D), Color(0xFF111919), Color(0xFF090B0A)),
+                start = Offset(visorLeft, visorTop),
+                end = Offset(visorLeft + visorSize.width, visorTop + visorSize.height)
+            ),
+            topLeft = Offset(visorLeft, visorTop),
+            size = visorSize,
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(19f), u(19f))
+        )
+        drawRoundRect(
+            color = Color(0xFF8BE9F0).copy(alpha = 0.16f),
+            topLeft = Offset(visorLeft + u(5f), visorTop + u(5f)),
+            size = Size(u(72f), u(62f)),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(15f), u(15f)),
+            style = Stroke(width = u(0.8f))
+        )
+        drawLine(
+            color = Color.White.copy(alpha = 0.10f),
+            start = Offset(visorLeft + u(13f), visorTop + u(7f)),
+            end = Offset(visorLeft + u(39f), visorTop + u(7f)),
+            strokeWidth = u(1.2f),
+            cap = StrokeCap.Round
+        )
+
+        // Expressive luminous eyes: attentive, calm while thinking, and brighter when listening.
+        val eyeY = cy - u(9f)
+        val eyeWidth = u(if (state == "listening") 16f else 14f)
+        val eyeH = u(eyeHeight)
+        val eyeOffset = u(20f)
+        val eyeColor = if (state == "listening") Color(0xFF9CF5FA) else Color(0xFFF5D96B)
+        for (side in listOf(-1f, 1f)) {
+            val eyeCenter = Offset(cx + side * eyeOffset, eyeY)
+            drawRoundRect(
+                color = eyeColor.copy(alpha = 0.13f * pulse),
+                topLeft = Offset(eyeCenter.x - eyeWidth * 0.72f, eyeCenter.y - eyeH * 1.15f),
+                size = Size(eyeWidth * 1.44f, eyeH * 2.3f),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(8f), u(8f))
+            )
+            drawRoundRect(
+                color = eyeColor,
+                topLeft = Offset(eyeCenter.x - eyeWidth / 2f, eyeCenter.y - eyeH / 2f),
+                size = Size(eyeWidth, eyeH),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(6f), u(6f))
+            )
+            drawCircle(
+                color = Color.White.copy(alpha = 0.82f),
+                radius = u(1.4f),
+                center = Offset(eyeCenter.x - u(3f), eyeCenter.y - eyeH * 0.12f)
+            )
         }
-        val mouth = Path().apply {
-            if (state == "speaking") {
-                moveTo(cx - radius * 0.18f, cy + radius * 0.52f)
-                cubicTo(cx - radius * 0.14f, cy + radius * 0.36f, cx + radius * 0.14f, cy + radius * 0.36f, cx + radius * 0.18f, cy + radius * 0.52f)
-                cubicTo(cx + radius * 0.14f, cy + radius * 0.76f, cx - radius * 0.14f, cy + radius * 0.76f, cx - radius * 0.18f, cy + radius * 0.52f)
-                close()
-            } else {
-                moveTo(cx - radius * 0.29f, cy + radius * 0.48f)
-                quadraticTo(cx, cy + radius * (if (state == "listening") 0.82f else 0.72f), cx + radius * 0.29f, cy + radius * 0.48f)
-            }
-        }
+
+        // The mouth changes shape while speaking; listening gets a tiny friendly smile.
         if (state == "speaking") {
-            drawPath(mouth, color = Color(0xFF281F0A))
+            drawRoundRect(
+                color = Color(0xFF8BE9F0).copy(alpha = 0.20f),
+                topLeft = Offset(cx - u(19f), cy + u(18f)),
+                size = Size(u(38f), u(15f)),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(7f), u(7f))
+            )
+            val bars = listOf(4f, 8f, 12f, 7f, 10f, 5f, 3f)
+            bars.forEachIndexed { index, height ->
+                val x = cx - u(12f) + index * u(4f)
+                drawLine(
+                    color = if (index % 2 == 0) Color(0xFF9CF5FA) else Gold,
+                    start = Offset(x, cy + u(25f) - u(height) / 2f),
+                    end = Offset(x, cy + u(25f) + u(height) / 2f),
+                    strokeWidth = u(2f),
+                    cap = StrokeCap.Round
+                )
+            }
         } else {
-            drawPath(mouth, color = Color(0xFF281F0A), style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round))
+            val mouth = Path().apply {
+                moveTo(cx - u(13f), cy + u(24f))
+                cubicTo(
+                    cx - u(7f), cy + u(if (state == "listening") 31f else 29f),
+                    cx + u(7f), cy + u(if (state == "listening") 31f else 29f),
+                    cx + u(13f), cy + u(24f)
+                )
+            }
+            drawPath(
+                path = mouth,
+                color = if (state == "listening") Color(0xFF9CF5FA) else Gold,
+                style = Stroke(width = u(2.2f), cap = StrokeCap.Round)
+            )
         }
+
+        // Tiny chin indicator gives the face a finished, product-like detail.
+        drawRoundRect(
+            color = Gold.copy(alpha = 0.45f),
+            topLeft = Offset(cx - u(9f), cy + u(43f)),
+            size = Size(u(18f), u(2f)),
+            cornerRadius = androidx.compose.ui.geometry.CornerRadius(u(1f), u(1f))
+        )
     }
 }
 
