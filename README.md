@@ -1,65 +1,37 @@
-# CGL+ AVai / Friend
+# CGL+ AVai
 
-## Native Android app — Friend
+**CGL+ AVai** is the umbrella project for two Android apps: **AVai** and **Friend**.
 
-The Android Studio project lives in [Friend/](./Friend/). Open the Friend folder in Android Studio to configure and build the native Kotlin app. It includes an animated face, Android microphone transcription, spoken replies using Android TextToSpeech, and provider selection for Gemini, OpenAI API, or Claude.
+- **AVai** is the AI workspace: provider connections, multiple API-key profiles, local/offline LLMs, per-chat model selection, chat history, and user-controlled AI memory.
+- **Friend** is the companion app with the animated eyes-and-mouth avatar, voice interaction, and a permission-based bridge to AVai.
+- The existing AVai web/PWA experience is retained during the migration.
 
-Friend also has encrypted on-device API-key storage, persistent chat history, editable memory notes, and an importer for text from extracted ChatGPT JSON exports and text transcripts.
+## Repository status
 
-- [Android project setup and safety notes](./Friend/README.md)
-- [Native app UI](./Friend/app/src/main/java/com/cgl/friend/MainActivity.kt)
-- [AI provider API client](./Friend/app/src/main/java/com/cgl/friend/AiClient.kt)
-- [Encrypted local storage](./Friend/app/src/main/java/com/cgl/friend/SecureStore.kt)
-- [Memory importer](./Friend/app/src/main/java/com/cgl/friend/MemoryImporter.kt)
+The existing native Android project is in [Friend/](./Friend/). The web AVai app is [index.html](./index.html). The current Friend debug APK workflow is [friend-android-build.yml](./.github/workflows/friend-android-build.yml).
 
-**Memory limitation:** Friend cannot automatically access your ChatGPT account history or saved memories via an API key. To bring in older conversations, request a ChatGPT data export, extract conversations.json, and import it in Friend's Memory screen. API usage is billed separately by the provider.
+The two-app architecture, security boundaries, consent flow, Firebase prerequisites, AI Match design, and staged delivery plan are documented in [ARCHITECTURE.md](./ARCHITECTURE.md).
 
-## AVai web app
+**Important:** The repository's GitHub name is still `CGL-AVai-Therapist` until it is renamed in GitHub repository settings to `CGL-AVai`. Updating files cannot change the repository's actual GitHub name.
 
-AVai is a static, mobile-friendly web app with an animated digital face, speech input, spoken replies, selectable browser voices, and tone preferences. It is a supportive AI companion—not a therapist, clinician, or emergency service.
+## Existing Friend features
 
-## Features
+- Animated avatar consisting of only eyes and mouth.
+- Android speech recognition and text-to-speech.
+- Provider selection for Gemini, OpenAI API, or Anthropic Claude.
+- Encrypted on-device storage for provider keys and local conversation data.
+- Persistent local chat history, editable memory notes, and text/JSON conversation import.
 
-- Animated face with idle, listening, thinking, and speaking states.
-- Six conversation tones: Gentle, Calm, Encouraging, Neutral, Reassuring, and To the point.
-- Browser text-to-speech with installed voice selection, speed, and pitch controls.
-- Speech-to-text microphone input where supported by the browser.
-- Optional Google Gemini or OpenAI API connection for generated replies.
-- Responsive dark interface with CGL+ yellow (#f2c94c) accents.
-- No sign-in and no server-side conversation store. The chat is held in page memory and can be cleared with **New chat**.
-- Minimal offline shell caching. AI replies require internet access.
+These existing features are not yet the complete AVai/Friend shared architecture described in the roadmap. In particular, the inter-app consent bridge, Firebase sign-in, shared chat store, multi-profile provider manager, and native AVai Android app still require implementation and device testing.
 
-## Run it
+## Existing AVai web app
 
-Open index.html in a modern browser for the basic interface. Voice recognition and installable PWA features generally work best when served over HTTPS or localhost.
+The web app remains a standalone static app with voice input/output, provider settings, and CGL+ dark/yellow styling. Its current browser-only configuration is not yet shared securely with Friend. Do not paste private API keys into public issue trackers or commit them to source.
 
-To run locally with Python installed:
+## Safety and privacy
 
-```bash
-python -m http.server 8000
-```
+AVai and Friend are supportive AI tools, not clinicians or emergency services. Model responses can be inaccurate. Users should control whether conversations are sent to a cloud provider or retained in history. Never store API keys in Firestore or send them through deep-link query parameters.
 
-Then open http://localhost:8000.
+## Development
 
-## Enable AI replies
-
-1. Open AVai and tap the gear icon.
-2. Choose **Google Gemini API** or **OpenAI API**.
-3. Enter your own API key and a model enabled for that account.
-4. Save for this session, then start a conversation.
-
-The API key is held in JavaScript memory only. It is not written to local storage, a file, or this repository, and it is lost when the page is refreshed or closed. The browser sends prompts directly to the selected provider, so the provider's own data-handling terms apply. The app does not claim that conversations are confidential.
-
-**Never hard-code a private key into source code or share one API key among visitors.** A browser app cannot keep a shared API secret safe. For a public, multi-user service, add a server-side API proxy with authentication, rate limits, abuse protection, and secrets stored in server environment variables.
-
-Model names and provider access can vary by account. This frontend makes direct provider requests and therefore depends on the provider allowing the request from the current browser origin. If a browser request fails due to CORS, configure a secure backend proxy rather than disabling browser security.
-
-## Safety and boundaries
-
-AVai is not a licensed therapist, cannot diagnose conditions, and cannot replace qualified care. It uses a supportive system instruction, but model safeguards are not guaranteed. If someone appears to be in immediate danger, seek help from a trusted person nearby and local emergency services. Do not rely on this page for crisis response.
-
-Do not enter information you would not want sent to an AI provider. Use **New chat** to clear the visible conversation and in-memory conversation context.
-
-## Deployment
-
-This is a static site suitable for a static host such as GitHub Pages, Cloudflare Pages, or any HTTPS web server. The repository is currently configured as private; check your GitHub plan and Pages visibility requirements before publishing. Do not make the repository public just to deploy it without reviewing its contents first.
+Open [Friend/](./Friend/) in Android Studio with JDK 17 and Android SDK Platform 36 installed. Run the existing debug build workflow to verify Friend. The architecture roadmap explicitly separates implemented functionality from planned work.
