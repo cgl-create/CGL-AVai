@@ -460,6 +460,17 @@ private fun FriendApp(activity: MainActivity) {
             }
         }
 
+        OutlinedButton(
+            onClick = {
+                try {
+                    context.startActivity(Intent("com.cgl.avai.action.CONSENT").setPackage("com.cgl.avai"))
+                } catch (_: Exception) {
+                    notice = "Install the AVai app first. The app-to-app AI bridge is still being built."
+                }
+            },
+            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+        ) { Text("Connect to AVai · integration preview", fontSize = 12.sp) }
+
         Card(
             colors = CardDefaults.cardColors(containerColor = Panel),
             shape = RoundedCornerShape(23.dp),
