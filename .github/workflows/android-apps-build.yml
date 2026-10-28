@@ -1,0 +1,50 @@
+name: Build AVai and Friend Android apps
+on:
+  push:
+    branches: [main]
+    paths:
+      - "AVai/**"
+      - "Friend/**"
+      - ".github/workflows/android-apps-build.yml"
+  pull_request:
+    paths:
+      - "AVai/**"
+      - "Friend/**"
+      - ".github/workflows/android-apps-build.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build-both:
+    name: Build both Android apps
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v4
+      - name: Install Android SDK Platform 36
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0"
+      - uses: gradle/actions/setup-gradle@v6
+        with:
+          gradle-version: "8.13"
+      - name: Build AVai debug APK
+        working-directory: AVai
+        run: gradle --no-daemon :app:assembleDebug
+      - name: Build Friend debug APK
+        working-directory: Friend
+        run: ./gradlew --no-daemon :app:assembleDebug
+      - name: Upload AVai debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: AVai-debug-apk
+          path: AVai/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+      - name: Upload Friend debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Friend-debug-apk
+          path: Friend/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
