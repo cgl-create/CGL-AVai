@@ -1,7 +1,7 @@
 {
-  "name": "AVai by CGL+ — Wellbeing Companion",
+  "name": "AVai by CGL+",
   "short_name": "AVai",
-  "description": "A voice-enabled AI wellbeing companion by CGL+.",
+  "description": "The AVai AI workspace by CGL+.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
