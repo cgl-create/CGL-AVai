@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.launch
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.UUID
 
 private val Ink = Color(0xFF10100F)
 private val Panel = Color(0xFF1B1B19)
@@ -54,17 +55,72 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     var model by remember { mutableStateOf(store.getString("model_" + providerName, AIProvider.fromStored(providerName).defaultModel)) }
     var prompt by remember { mutableStateOf("") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var historyOpen by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Your AI workspace · keys stay on this device") }
-    var chats by remember { mutableStateOf(loadMessages(store.getString("chat", "[]"))) }
+    var sessions by remember { mutableStateOf(loadSessions(store.getString("chat_sessions", "[]"))) }
+    var activeChatId by remember { mutableStateOf(store.getString("active_chat", "main")) }
+    var chats by remember { mutableStateOf(loadMessages(store.getString("chat_" + activeChatId, store.getString("chat", "[]")))) }
     var showConsent by remember { mutableStateOf(launchedForConsent) }
     var consentAnswer by remember { mutableStateOf("") }
     val provider = AIProvider.fromStored(providerName)
 
+    fun writeSessions() {
+        val array = JSONArray()
+        sessions.forEach { item ->
+            array.put(JSONObject().put("id", item.id).put("title", item.title).put("updatedAt", item.updatedAt))
+        }
+        store.putString("chat_sessions", array.toString())
+    }
+
     fun persistChats() {
         val array = JSONArray()
         chats.forEach { array.put(JSONObject().put("role", it.role).put("text", it.text).put("timestamp", it.timestamp)) }
+        store.putString("chat_" + activeChatId, array.toString())
         store.putString("chat", array.toString())
+        val old = sessions.firstOrNull { it.id == activeChatId }
+        val firstPrompt = chats.firstOrNull { it.role == "user" }?.text?.replace("\n", " ")?.take(38)
+        val updated = ChatSession(
+            id = activeChatId,
+            title = if (old == null || old.title == "New chat") firstPrompt?.ifBlank { "New chat" } ?: "New chat" else old.title,
+            updatedAt = System.currentTimeMillis()
+        )
+        sessions = (sessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
+        writeSessions()
+        store.putString("active_chat", activeChatId)
+    }
+
+    fun startNewChat() {
+        if (chats.isNotEmpty()) persistChats()
+        activeChatId = UUID.randomUUID().toString()
+        chats = emptyList()
+        prompt = ""
+        val item = ChatSession(activeChatId, "New chat", System.currentTimeMillis())
+        sessions = (listOf(item) + sessions.filterNot { it.id == item.id }).sortedByDescending { it.updatedAt }
+        store.putString("active_chat", activeChatId)
+        writeSessions()
+        status = "New conversation started"
+    }
+
+    fun openChat(item: ChatSession) {
+        if (item.id != activeChatId && chats.isNotEmpty()) persistChats()
+        activeChatId = item.id
+        store.putString("active_chat", item.id)
+        chats = loadMessages(store.getString("chat_" + item.id, "[]"))
+        historyOpen = false
+        status = item.title
+    }
+
+    fun deleteChat(item: ChatSession) {
+        store.remove("chat_" + item.id)
+        sessions = sessions.filterNot { it.id == item.id }
+        writeSessions()
+        if (item.id == activeChatId) {
+            activeChatId = UUID.randomUUID().toString()
+            chats = emptyList()
+            store.putString("active_chat", activeChatId)
+        }
+        status = "Conversation deleted"
     }
 
     fun send() {
@@ -140,6 +196,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                 Text("AVai", color = Paper, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text("CGL+ AI Workspace", color = Muted, fontSize = 12.sp)
             }
+            TextButton(onClick = { historyOpen = true }) { Text("History", color = Gold) }
             TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = Gold) }
         }
         Spacer(Modifier.height(14.dp))
@@ -194,7 +251,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { chats = emptyList(); persistChats(); status = "New conversation started" }) { Text("New chat", color = Gold) }
+            TextButton(onClick = { startNewChat() }) { Text("New chat", color = Gold) }
             TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
         }
     }
@@ -246,7 +303,54 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             }
         )
     }
+    if (historyOpen) {
+        AlertDialog(
+            onDismissRequest = { historyOpen = false },
+            title = { Text("Chat history") },
+            text = {
+                Column(Modifier.heightIn(max = 500.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (sessions.isEmpty()) {
+                        Text("Your saved conversations will appear here.", color = Muted)
+                    }
+                    sessions.sortedByDescending { it.updatedAt }.forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
+                        ) {
+                            TextButton(onClick = { openChat(item) }, modifier = Modifier.weight(1f)) {
+                                Text(
+                                    (if (item.id == activeChatId) "• " else "") + item.title,
+                                    maxLines = 2,
+                                    color = if (item.id == activeChatId) Gold else Paper
+                                )
+                            }
+                            TextButton(onClick = { deleteChat(item) }) { Text("Delete", color = Muted, fontSize = 11.sp) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { historyOpen = false }) { Text("Close") } },
+            dismissButton = { TextButton(onClick = { startNewChat(); historyOpen = false }) { Text("New chat") } }
+        )
+    }
+
 }
+
+private data class ChatSession(val id: String, val title: String, val updatedAt: Long)
+
+private fun loadSessions(source: String): List<ChatSession> = try {
+    val array = JSONArray(source)
+    (0 until array.length()).mapNotNull { i ->
+        val item = array.optJSONObject(i) ?: return@mapNotNull null
+        val id = item.optString("id")
+        if (id.isBlank()) null else ChatSession(
+            id = id,
+            title = item.optString("title", "Chat").ifBlank { "Chat" },
+            updatedAt = item.optLong("updatedAt", 0L)
+        )
+    }.take(100)
+} catch (_: Exception) { emptyList() }
 
 private fun loadMessages(source: String): List<ChatMessage> = try {
     val array = JSONArray(source)
