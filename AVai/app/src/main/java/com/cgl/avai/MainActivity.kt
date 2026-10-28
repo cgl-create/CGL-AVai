@@ -58,7 +58,17 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     var historyOpen by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Your AI workspace · keys stay on this device") }
-    var sessions by remember { mutableStateOf(loadSessions(store.getString("chat_sessions", "[]"))) }
+    var sessions by remember {
+        val savedSessions = loadSessions(store.getString("chat_sessions", "[]"))
+        val legacyMessages = loadMessages(store.getString("chat", "[]"))
+        val legacyId = store.getString("active_chat", "main")
+        val legacyTitle = legacyMessages.firstOrNull { it.role == "user" }?.text
+            ?.replace("\n", " ")?.take(38)?.ifBlank { "Previous chat" } ?: "Previous chat"
+        val migratedSessions = if (savedSessions.isEmpty() && legacyMessages.isNotEmpty()) {
+            listOf(ChatSession(legacyId, legacyTitle, System.currentTimeMillis()))
+        } else savedSessions
+        mutableStateOf(migratedSessions)
+    }
     var activeChatId by remember { mutableStateOf(store.getString("active_chat", "main")) }
     var chats by remember { mutableStateOf(loadMessages(store.getString("chat_" + activeChatId, store.getString("chat", "[]")))) }
     var showConsent by remember { mutableStateOf(launchedForConsent) }
