@@ -1,0 +1,259 @@
+package com.cgl.avai
+
+import android.content.Intent
+import android.os.Bundle
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
+import org.json.JSONArray
+import org.json.JSONObject
+
+private val Ink = Color(0xFF10100F)
+private val Panel = Color(0xFF1B1B19)
+private val Gold = Color(0xFFF2C94C)
+private val Paper = Color(0xFFF5F3ED)
+private val Muted = Color(0xFFAAA79D)
+
+class MainActivity : ComponentActivity() {
+    private lateinit var store: SecureStore
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        store = SecureStore(this)
+        setContent {
+            MaterialTheme(colorScheme = darkColorScheme(
+                primary = Gold, background = Ink, surface = Panel,
+                onPrimary = Ink, onBackground = Paper, onSurface = Paper
+            )) {
+                AVaiApp(store, intent?.action == "com.cgl.avai.action.CONSENT")
+            }
+        }
+    }
+}
+
+@Composable
+private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
+    val scope = rememberCoroutineScope()
+    var providerName by remember { mutableStateOf(store.getString("provider", AIProvider.GEMINI.name)) }
+    var model by remember { mutableStateOf(store.getString("model_" + providerName, AIProvider.fromStored(providerName).defaultModel)) }
+    var prompt by remember { mutableStateOf("") }
+    var settingsOpen by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var status by remember { mutableStateOf("Your AI workspace · keys stay on this device") }
+    var chats by remember { mutableStateOf(loadMessages(store.getString("chat", "[]"))) }
+    var showConsent by remember { mutableStateOf(launchedForConsent) }
+    var consentAnswer by remember { mutableStateOf("") }
+    val provider = AIProvider.fromStored(providerName)
+
+    fun persistChats() {
+        val array = JSONArray()
+        chats.forEach { array.put(JSONObject().put("role", it.role).put("text", it.text).put("timestamp", it.timestamp)) }
+        store.putString("chat", array.toString())
+    }
+
+    fun send() {
+        val text = prompt.trim()
+        if (text.isEmpty() || busy) return
+        val key = store.getString("key_" + provider.name)
+        if (key.isBlank()) {
+            status = "Connect ${provider.label} before chatting."
+            settingsOpen = true
+            return
+        }
+        chats = chats + ChatMessage("user", text)
+        prompt = ""
+        persistChats()
+        busy = true
+        status = "Thinking with ${provider.label}…"
+        scope.launch {
+            try {
+                val answer = AiClient.reply(
+                    provider, key, model, "clear, calm and helpful",
+                    store.getString("memory"), "", chats.takeLast(24)
+                )
+                chats = chats + ChatMessage("assistant", answer)
+                status = "Connected to ${provider.label}"
+                persistChats()
+            } catch (error: Exception) {
+                chats = chats + ChatMessage(
+                    "assistant",
+                    "I couldn't complete that request: ${error.message ?: "unknown error"}. Check your API key, model ID, connection and provider quota."
+                )
+                status = "Request failed"
+                persistChats()
+            } finally {
+                busy = false
+            }
+        }
+    }
+
+    if (showConsent) {
+        AlertDialog(
+            onDismissRequest = { showConsent = false; consentAnswer = "Friend access not granted" },
+            title = { Text("Friend wants to use AVai") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Allow Friend to use AVai with your AI configurations and connections?")
+                    Text("This first build only shows the consent UI; the secure AI hand-off is not connected yet. Allowing here does not share API keys.", color = Muted, fontSize = 12.sp)
+                    if (consentAnswer.isNotBlank()) Text(consentAnswer, color = Gold)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    consentAnswer = "Choice recorded for this screen only; bridge not active."
+                    showConsent = false
+                    status = consentAnswer
+                }) { Text("Allow") }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    consentAnswer = "Friend access denied"
+                    showConsent = false
+                    status = consentAnswer
+                }) { Text("Deny") }
+            }
+        )
+    }
+
+    Column(Modifier.fillMaxSize().background(Ink).padding(16.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.size(44.dp).background(Gold, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                Text("A", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
+            }
+            Column(Modifier.weight(1f)) {
+                Text("AVai", color = Paper, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text("CGL+ AI Workspace", color = Muted, fontSize = 12.sp)
+            }
+            TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = Gold) }
+        }
+        Spacer(Modifier.height(14.dp))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            var expanded by remember { mutableStateOf(false) }
+            Box {
+                OutlinedButton(onClick = { expanded = true }) { Text(provider.label, fontSize = 12.sp) }
+                DropdownMenu(expanded, { expanded = false }) {
+                    AIProvider.entries.forEach { item ->
+                        DropdownMenuItem(text = { Text(item.label) }, onClick = {
+                            providerName = item.name
+                            model = store.getString("model_" + item.name, item.defaultModel)
+                            store.putString("provider", item.name)
+                            expanded = false
+                        })
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = model, onValueChange = {
+                    model = it
+                    store.putString("model_" + provider.name, it)
+                }, modifier = Modifier.weight(1f), label = { Text("Model ID") }, singleLine = true
+            )
+        }
+        Text(status, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
+        LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (chats.isEmpty()) item {
+                Column(Modifier.fillMaxWidth().padding(top = 62.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("Your AI. Your choice.", color = Paper, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Connect a provider, then start chatting.", color = Muted)
+                }
+            }
+            items(chats) { message ->
+                Column(Modifier.fillMaxWidth(), horizontalAlignment = if (message.role == "user") Alignment.End else Alignment.Start) {
+                    Text(if (message.role == "user") "YOU" else "AVAI", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Surface(color = if (message.role == "user") Color(0xFF34301F) else Panel, shape = RoundedCornerShape(16.dp)) {
+                        Text(message.text, Modifier.padding(12.dp), color = Paper, fontSize = 14.sp)
+                    }
+                }
+            }
+        }
+        Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedTextField(
+                value = prompt, onValueChange = { prompt = it }, modifier = Modifier.weight(1f),
+                label = { Text("Message AVai") }, maxLines = 4,
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Send),
+                keyboardActions = KeyboardActions(onSend = { send() })
+            )
+            Button(onClick = { send() }, enabled = !busy && prompt.isNotBlank(), modifier = Modifier.height(54.dp)) {
+                Text(if (busy) "…" else "Send")
+            }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+            TextButton(onClick = { chats = emptyList(); persistChats(); status = "New conversation started" }) { Text("New chat", color = Gold) }
+            TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
+        }
+    }
+
+    if (settingsOpen) {
+        var chosen by remember { mutableStateOf(providerName) }
+        var keyInput by remember { mutableStateOf("") }
+        var modelInput by remember { mutableStateOf(model) }
+        var memoryInput by remember { mutableStateOf(store.getString("memory")) }
+        AlertDialog(
+            onDismissRequest = { settingsOpen = false },
+            title = { Text("AI connections & memory") },
+            text = {
+                Column(Modifier.heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("API keys and chat history are encrypted locally with Android Keystore. API use may cost money. A ChatGPT subscription does not include OpenAI API usage.", color = Muted, fontSize = 12.sp)
+                    AIProvider.entries.forEach { item ->
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            RadioButton(selected = chosen == item.name, onClick = {
+                                chosen = item.name
+                                modelInput = store.getString("model_" + item.name, item.defaultModel)
+                                keyInput = ""
+                            })
+                            Column {
+                                Text(item.label)
+                                Text(if (store.getString("key_" + item.name).isNotBlank()) "Key saved on this device" else "Not connected", color = Muted, fontSize = 11.sp)
+                            }
+                        }
+                    }
+                    OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text("API key (blank keeps saved key)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                    OutlinedTextField(value = modelInput, onValueChange = { modelInput = it }, label = { Text("Model ID") }, singleLine = true)
+                    OutlinedTextField(value = memoryInput, onValueChange = { memoryInput = it }, label = { Text("Your AI memory notes") }, minLines = 2)
+                    Text("Local/offline LLM downloads and CGL+ Accounts sign-in are not active yet.", color = Muted, fontSize = 11.sp)
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    providerName = chosen
+                    model = modelInput.trim().ifBlank { AIProvider.fromStored(chosen).defaultModel }
+                    if (keyInput.isNotBlank()) store.putString("key_" + chosen, keyInput.trim())
+                    store.putString("model_" + chosen, model)
+                    store.putString("provider", providerName)
+                    store.putString("memory", memoryInput.take(8000))
+                    settingsOpen = false
+                    status = "Settings saved on this device"
+                }) { Text("Save") }
+            },
+            dismissButton = {
+                TextButton(onClick = { settingsOpen = false }) { Text("Cancel") }
+            }
+        )
+    }
+}
+
+private fun loadMessages(source: String): List<ChatMessage> = try {
+    val array = JSONArray(source)
+    (0 until array.length()).mapNotNull { i ->
+        val item = array.optJSONObject(i) ?: return@mapNotNull null
+        val role = item.optString("role")
+        val text = item.optString("text")
+        if ((role == "user" || role == "assistant") && text.isNotBlank()) ChatMessage(role, text, item.optLong("timestamp")) else null
+    }.takeLast(300)
+} catch (_: Exception) { emptyList() }
