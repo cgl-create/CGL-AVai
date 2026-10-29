@@ -53,6 +53,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     val scope = rememberCoroutineScope()
     var providerName by remember { mutableStateOf(store.getString("provider", AIProvider.GEMINI.name)) }
     var model by remember { mutableStateOf(store.getString("model_" + providerName, AIProvider.fromStored(providerName).defaultModel)) }
+    var apiProfiles by remember { mutableStateOf(loadApiProfiles(store.getString("api_profiles", "[]"))) }
     var prompt by remember { mutableStateOf("") }
     var settingsOpen by remember { mutableStateOf(false) }
     var accountOpen by remember { mutableStateOf(false) }
@@ -76,6 +77,22 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     var showConsent by remember { mutableStateOf(launchedForConsent) }
     var consentAnswer by remember { mutableStateOf("") }
     val provider = AIProvider.fromStored(providerName)
+
+    fun saveApiProfiles() {
+        val array = JSONArray()
+        apiProfiles.forEach { item ->
+            array.put(JSONObject().put("id", item.id).put("name", item.name).put("provider", item.provider.name))
+        }
+        store.putString("api_profiles", array.toString())
+    }
+
+    fun selectedApiKey(forProvider: AIProvider): String {
+        val activeId = store.getString("active_profile_" + forProvider.name)
+        val namedKey = if (activeId.isNotBlank()) store.getString("profile_key_" + activeId) else ""
+        return namedKey.ifBlank {
+            store.getString("key_" + forProvider.name).ifBlank { store.getString(forProvider.keyName) }
+        }
+    }
 
     fun writeSessions() {
         val array = JSONArray()
@@ -138,7 +155,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     fun send() {
         val text = prompt.trim()
         if (text.isEmpty() || busy) return
-        val key = store.getString("key_" + provider.name)
+        val key = selectedApiKey(provider)
         if (key.isBlank()) {
             status = "Connect ${provider.label} before chatting."
             settingsOpen = true
@@ -290,6 +307,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     if (settingsOpen) {
         var chosen by remember { mutableStateOf(providerName) }
         var keyInput by remember { mutableStateOf("") }
+        var profileNameInput by remember { mutableStateOf("Default") }
+        var selectedKeyProfileId by remember { mutableStateOf(store.getString("active_profile_" + providerName)) }
         var modelInput by remember { mutableStateOf(model) }
         var memoryInput by remember { mutableStateOf(store.getString("memory")) }
         AlertDialog(
@@ -304,14 +323,54 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                                 chosen = item.name
                                 modelInput = store.getString("model_" + item.name, item.defaultModel)
                                 keyInput = ""
+                                selectedKeyProfileId = store.getString("active_profile_" + item.name)
+                                profileNameInput = apiProfiles.firstOrNull { it.id == selectedKeyProfileId }?.name ?: "Default"
                             })
                             Column {
                                 Text(item.label)
-                                Text(if (store.getString("key_" + item.name).isNotBlank()) "Key saved on this device" else "Not connected", color = Muted, fontSize = 11.sp)
+                                Text(
+                                    if (apiProfiles.any { it.provider == item } || store.getString("key_" + item.name).isNotBlank() || store.getString(item.keyName).isNotBlank()) "Configured on this device" else "Not connected",
+                                    color = Muted, fontSize = 11.sp
+                                )
                             }
                         }
                     }
-                    OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text("API key (blank keeps saved key)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
+                    Text("Saved key profiles for " + AIProvider.fromStored(chosen).label, color = Gold, fontSize = 12.sp)
+                    val savedProfiles = apiProfiles.filter { it.provider.name == chosen }
+                    if (savedProfiles.isEmpty()) {
+                        Text(if (store.getString("key_" + chosen).isNotBlank() || store.getString(AIProvider.fromStored(chosen).keyName).isNotBlank()) "Legacy default key is available. Add a named profile below to keep multiple keys." else "No named key profiles yet.", color = Muted, fontSize = 11.sp)
+                    }
+                    savedProfiles.forEach { profile ->
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            RadioButton(
+                                selected = selectedKeyProfileId == profile.id,
+                                onClick = {
+                                    selectedKeyProfileId = profile.id
+                                    profileNameInput = profile.name
+                                    keyInput = ""
+                                    store.putString("active_profile_" + chosen, profile.id)
+                                    status = "Active key profile: " + profile.name
+                                }
+                            )
+                            Text(profile.name, Modifier.weight(1f), fontSize = 12.sp)
+                            TextButton(onClick = {
+                                store.remove("profile_key_" + profile.id)
+                                apiProfiles = apiProfiles.filterNot { it.id == profile.id }
+                                if (selectedKeyProfileId == profile.id) {
+                                    selectedKeyProfileId = ""
+                                    store.remove("active_profile_" + chosen)
+                                }
+                                saveApiProfiles()
+                                status = "API key profile deleted"
+                            }) { Text("Delete", fontSize = 10.sp, color = Muted) }
+                        }
+                    }
+                    OutlinedTextField(
+                        value = profileNameInput,
+                        onValueChange = { profileNameInput = it.take(48) },
+                        label = { Text("Key profile name") }, singleLine = true
+                    )
+                    OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text("API key for this profile (blank keeps it)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     OutlinedTextField(value = modelInput, onValueChange = { modelInput = it }, label = { Text("Model ID") }, singleLine = true)
                     OutlinedTextField(value = memoryInput, onValueChange = { memoryInput = it }, label = { Text("Your AI memory notes") }, minLines = 2)
                     Text("Offline model runtime is not installed yet. CGL+ Accounts needs this app registered in Firebase and its real google-services.json.", color = Muted, fontSize = 11.sp)
@@ -392,6 +451,19 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
 }
 
 private data class ChatSession(val id: String, val title: String, val updatedAt: Long)
+
+private data class ApiKeyProfile(val id: String, val name: String, val provider: AIProvider)
+
+private fun loadApiProfiles(source: String): List<ApiKeyProfile> = try {
+    val array = JSONArray(source)
+    (0 until array.length()).mapNotNull { i ->
+        val item = array.optJSONObject(i) ?: return@mapNotNull null
+        val id = item.optString("id")
+        val name = item.optString("name").take(48)
+        val provider = AIProvider.fromStored(item.optString("provider"))
+        if (id.isBlank() || name.isBlank()) null else ApiKeyProfile(id, name, provider)
+    }.take(60)
+} catch (_: Exception) { emptyList() }
 
 private fun loadSessions(source: String): List<ChatSession> = try {
     val array = JSONArray(source)
