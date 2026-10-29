@@ -12,8 +12,9 @@ import java.net.URL
 
 enum class AIProvider(val label: String, val keyName: String, val defaultModel: String) {
     GEMINI("Google Gemini", "api_key_gemini", "gemini-3.8-flash"),
-    OPENAI("OpenAI API", "api_key_openai", "gpt-5.5"),
-    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-5");
+    OPENAI("OpenAI API", "api_key_openai", "gpt-6-astra"),
+    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-5"),
+    LOCAL("AVai offline model", "", "local");
 
     companion object {
         fun fromStored(value: String): AIProvider =
@@ -41,6 +42,9 @@ object AiClient {
         importedHistory: String,
         history: List<ChatMessage>
     ): String = withContext(Dispatchers.IO) {
+        if (provider == AIProvider.LOCAL) {
+            throw IllegalStateException("Offline inference is handled by AVai. Switch Friend to AI: AVai and import a .litertlm model in AVai.")
+        }
         require(apiKey.isNotBlank()) { "Add an API key for " + provider.label + " in Settings." }
         val safeHistory = history.takeLast(24)
         val instructions = buildInstructions(tone, memoryNotes, importedHistory)
@@ -48,6 +52,7 @@ object AiClient {
             AIProvider.GEMINI -> gemini(apiKey, model, instructions, safeHistory)
             AIProvider.OPENAI -> openAi(apiKey, model, instructions, safeHistory)
             AIProvider.CLAUDE -> claude(apiKey, model, instructions, safeHistory)
+            AIProvider.LOCAL -> error("Local inference must be routed through AVai.")
         }
     }
 

@@ -1,71 +1,54 @@
 # CGL+ AVai — product and integration architecture
 
-CGL+ AVai is the umbrella project for two separate Android apps. The repository is named `CGL-AVai`.
+CGL+ AVai is the umbrella project for two Android apps:
 
-- **AVai** — the AI workspace at `AVai/`. The initial native Compose app supports Gemini, OpenAI API and Anthropic providers, editable model IDs, encrypted on-device keys, chat history, multiple saved conversations, memory notes, and a prototype Friend-consent screen.
-- **Friend** — the companion app at `Friend/`, with the animated eyes-and-mouth avatar, speech input/output, wellbeing-oriented chat, local chat history, memory notes and an AVai launch entry point.
-- The existing static web/PWA app remains at the repository root.
+- **AVai** — AI workspace at AVai/. It owns provider API-key profiles, cloud and local model execution, chat history, memory notes, and companion authorization.
+- **Friend** — conversation companion at Friend/ with the eyes-and-mouth animated face, voice input/output, local chat management, and wellbeing-oriented system instructions.
+- The original web/PWA app remains at the repository root.
 
-## Current implementation state
+## Implemented in the current source branch
 
-Implemented in source:
-- Native Android project scaffolding for both apps.
-- AVai provider selection, editable model ID, per-provider key storage, encrypted local history and memory notes.
-- AVai saved conversation index, open/delete controls, and separate new conversations.
-- Friend avatar, speech recognition, text-to-speech, conversation history and memory import/editing.
-- Separate APK build workflows plus a combined workflow for building both APKs.
+- Native Kotlin + Jetpack Compose apps with separate build targets and a combined workflow.
+- AVai cloud providers: Gemini, OpenAI Responses API and Anthropic Messages API. Model IDs are editable; the defaults are maintained as best-effort current model names.
+- Named API-key profiles in AVai, with active-profile selection. Provider secrets are encrypted locally using Android Keystore-backed AES-GCM storage and never travel to Friend.
+- Chat list/history in AVai and Friend, including separate sessions, open, new and delete. Provider/model choices and backend mode are saved per Friend conversation.
+- Friend defaults to AVai mode. Requests carry only bounded prompt/context/history/tone and an optional provider/model override; AVai looks up its own key, makes the provider call, and returns the answer over a Messenger reply.
+- AVai stores mirrored Friend conversations in its encrypted local chat store.
+- Consent UI: Allow once, Always allow and Deny. A one-time grant expires after five minutes and is consumed by the next valid request. Persistent grants can be revoked in AVai settings.
+- The exported AVai Messenger service is guarded by a signature-level Android permission, verifies the caller UID/package and shared signing certificate, and checks consent before inference. Both apps must be installed from builds sharing a signing certificate. Prefer the combined CI artifact pair.
+- Offline model import and inference using Google's LiteRT-LM Android runtime: the user selects a .litertlm file, AVai copies it to app-private storage, computes a SHA-256 fingerprint, checks file/storage constraints, invokes the on-device runtime, and can remove the imported model. The local fingerprint is not a trusted-publisher authenticity check; model license and download source must be checked by the user.
+- Firebase email/password and Google sign-in UI, disabled with an explicit missing-configuration message unless each app has its matching real Firebase configuration.
 
-Not implemented or not yet verified end-to-end:
-- Firebase/CGL+ Accounts authentication.
-- A functioning secure Friend-to-AVai inference bridge. Friend's “Connect to AVai” entry point opens the consent-screen prototype, but the screen clearly explains that consent currently does not grant inference access and no API keys are transferred.
-- Persistent Allow once/Always allow/revocation, verified Binder/service caller, shared cross-app chat store, multi-profile-per-provider secrets, local/offline LLM runtime and AI Match catalogue.
-- Device testing, production signing, accessibility review and release hardening.
+## Important unimplemented or not verified end-to-end
 
-Do not describe a feature as complete until its implementation and tests are present.
+- Real Firebase sign-in against CGL+ Accounts remains unverified until the real google-services.json files are installed for both packages, email/password and Google providers are configured for both app registrations, and the actual signing certificate's SHA-1/SHA-256 fingerprints are registered. See FIREBASE_SETUP.md.
+- No Firestore chat, memory or API-key sync is implemented. Authentication is identity-only; private conversation data and keys do not upload just because a user signs in.
+- No automatic model downloader/catalogue with official checksums or license verification is implemented. The model importer calculates a local SHA-256, which detects later file changes only if a trusted expected digest is available; it does not authenticate a file independently.
+- No Play Store release signing, production security review, or real-device/system integration testing has been completed. CI compilation does not prove all runtime paths work on every phone.
+- The apps do not yet have cross-device chat sync, shared cloud memory, universal model compatibility or universal model performance guarantees.
 
-## Product boundaries
+## Data and security boundaries
 
-### AVai owns
-- Provider configurations and secrets.
-- Model/provider selection and AI requests.
-- Chat history and user-controlled memory.
-- Future Firebase Authentication for CGL+ Accounts.
-- Companion access consent and revocation.
+AVai is the source of truth for provider configurations and API keys. Friend receives a narrow capability to request inference and never receives provider credentials. The bridge payload must never include API keys, Firebase ID tokens, or secrets. Requests must stay bounded, caller identity must be verified, and consent must be checked per request.
 
-### Friend owns
-- Avatar, voice input/output and companion-specific UI.
-- The conversational experience.
-- A future narrow capability to request inference from AVai.
-- No direct access to AVai's API keys once the bridge is complete.
+API keys, local chat history and memory use app-private encrypted storage. This is defense in depth, not a promise against rooted/compromised devices. Provider requests leave the device and go to the selected provider; local inference is performed on-device with the imported model.
 
-## Companion consent and transport
+Firebase Authentication provides account identity. It must not be treated as permission to synchronize chats, memory or secrets. Any future sync must be opt-in, disclosed, governed by Firebase Security Rules, and must never upload API keys to Firestore.
 
-The intended consent text is:
+## Firebase prerequisites
 
-> Allow Friend to use AVai with your AI configurations and connections?
+The existing Firebase project is cgl-accounts. Register Android apps with:
+- AVai: com.cgl.avai
+- Friend: com.cgl.friend
 
-The completed flow must identify the requesting app, explain scope, offer **Allow once**, **Always allow**, and **Deny**, and make persistent access revocable from AVai settings. A request must never silently grant access based only on a deep link or package name.
+Install the matching google-services.json in each app module and configure OAuth SHA fingerprints for the cert used by installed builds. Do not invent Firebase configuration or commit signing keys/service-account secrets. Build workflows accept optional configuration secrets as documented in FIREBASE_SETUP.md.
 
-The planned Android communication mechanism is a narrowly scoped bound service with request/response messages and explicit consent checks. A signature-level permission is appropriate if both apps are distributed with the same signing certificate. AVai must verify the calling UID/package and enforce the stored grant for every inference request. Never place API keys, Firebase ID tokens, or full chat histories into exported intent URIs. The current intent entry point only displays a prototype dialog; it does not perform an AI hand-off.
+## Model/device requirements
 
-## Storage and sync
+LiteRT-LM requires a supported .litertlm model. Imported model size is not its runtime memory requirement. The available-RAM check is a warning, not a compatibility guarantee. Test each model on the target device and display model license/source, runtime constraints, storage size and performance/thermal caveats before recommending broad use.
 
-- API keys, chat history and memory should stay encrypted locally using Android Keystore-backed encryption.
-- Local model inference should remain on-device.
-- Cloud-provider requests go only to the provider selected by the user.
-- Firebase Authentication establishes account identity; it is not permission to upload private chats or API keys.
-- Any future chat/memory sync must be opt-in, disclosed clearly, and governed by Firebase Security Rules. Never store API keys in Firestore.
-- Users should be able to export and delete chats and memory.
+## Verification and release
 
-## Firebase integration prerequisites
+The combined workflow builds AVai and Friend in one runner, producing AVai-debug-apk and Friend-debug-apk with the same signing certificate. Install these two artifacts from the same successful combined run to test the signature-protected bridge. Separate workflow runs may have different debug certificates unless the stable debug keystore secret is configured. Debug APKs are for testing, not Play Store releases.
 
-Use the existing CGL+ Accounts Firebase project only after both Android package IDs, Firebase app registrations, SHA fingerprints and OAuth providers are confirmed. Each application requires its own correct Firebase configuration. Do not invent `google-services.json`, commit service-account credentials, or put private server keys in source control. Firebase client configuration is not a service-account secret, but authentication must still enforce proper security rules and server-side authorization.
-
-## AI Match and local models
-
-A future catalogue should include model ID/version, quantization, download size, SHA-256, license, supported runtime, context limits, minimum memory guidance and capabilities. Verify hashes before loading. Recommendations must consider available memory and runtime support, not only installed RAM. Show download size and estimated runtime memory separately, warn about battery/heat/performance, require confirmation before downloads, and let users remove models.
-
-## Release and build workflow
-
-The repository provides individual workflows for AVai and Friend plus `.github/workflows/android-apps-build.yml` to build both debug APKs in one run. Debug APKs are test builds, not Play Store release artifacts. For a future signature-protected bridge, both APKs must be built/signed with the same certificate and tested together from the same compatible build.
-
+Do not label a feature fully complete until its behavior is tested on devices. In particular, Firebase requires real config, and the bridge/offline model require real hardware validation before public release.

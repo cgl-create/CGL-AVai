@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AVai by CGL+</string>
+    <string name="permission_friend_ai">Allows the CGL+ Friend app signed with the same certificate to request AI responses through AVai after user consent.</string>
+</resources>
