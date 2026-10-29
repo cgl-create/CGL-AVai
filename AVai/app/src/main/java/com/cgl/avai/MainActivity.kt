@@ -6,6 +6,8 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -350,7 +352,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             onDismissRequest = { settingsOpen = false },
             title = { Text("AI connections & memory") },
             text = {
-                Column(Modifier.heightIn(max = 520.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(Modifier.heightIn(max = 520.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("API keys and chat history are encrypted locally with Android Keystore. API use may cost money. A ChatGPT subscription does not include OpenAI API usage.", color = Muted, fontSize = 12.sp)
                     AIProvider.entries.forEach { item ->
                         Row(verticalAlignment = Alignment.CenterVertically) {
