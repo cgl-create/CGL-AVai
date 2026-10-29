@@ -9,7 +9,7 @@
 - Named API-key profiles per cloud provider. Keys are encrypted in app-private storage with Android Keystore; no API key is sent to Friend.
 - Model ID selection and saved chat sessions with open/delete, including provider/model choices per conversation.
 - Local user memory notes and encrypted local conversation history.
-- Import a compatible .litertlm model into app-private storage, compute a SHA-256 fingerprint, check available storage/RAM, run the model on-device, and delete it when no longer needed.
+- Import and keep up to 20 compatible .litertlm models in app-private storage, switch between them, calculate local SHA-256 fingerprints, check available storage/RAM, run a selected model on-device, and delete models when no longer needed.
 - Consent UI and revocable permission state for Friend's inference requests.
 - CGL+ Accounts email/password and Google sign-in UI, ready for the real Firebase app configuration.
 
@@ -48,7 +48,7 @@ GitHub Actions provides:
 - [AVai APK workflow](./.github/workflows/avai-android-build.yml)
 - [Friend APK workflow](./.github/workflows/friend-android-build.yml)
 
-Use the artifacts from the **same successful combined workflow run**: AVai-debug-apk and Friend-debug-apk. That matters because the signature-level bridge requires both APKs to be signed by the same certificate. If you use separate workflow runs, configure the stable debug keystore secret described in FIREBASE_SETUP.md. These are debug builds, not Play Store release builds.
+Use the artifacts from the **same successful combined workflow run**: AVai-debug-apk and Friend-debug-apk. Install **AVai first, then Friend**, and use the same-run pair because the signature-level bridge requires both APKs to be signed by the same certificate. If you use separate workflow runs, configure the stable debug keystore secret described in FIREBASE_SETUP.md. These are debug builds, not Play Store release builds.
 
 ## Developer setup
 
