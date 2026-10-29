@@ -303,6 +303,9 @@ private fun FriendApp(activity: MainActivity) {
     var thinking by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf("Ready when you are") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var accountOpen by remember { mutableStateOf(false) }
+    var accountLabel by remember { mutableStateOf("Account") }
+    var useAvai by remember { mutableStateOf(store.getString("use_avai", "true") == "true") }
     var memoryOpen by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
@@ -370,8 +373,8 @@ private fun FriendApp(activity: MainActivity) {
     fun sendMessage(raw: String) {
         val text = raw.trim()
         if (text.isBlank() || busy) return
-        if (apiKeys[activeProvider].isNullOrBlank()) {
-            notice = "Add a " + activeProvider.label + " API key in Settings before asking Friend to reply."
+        if (!useAvai && apiKeys[activeProvider].isNullOrBlank()) {
+            notice = "Add a " + activeProvider.label + " API key in Settings, or switch to AVai mode."
             settingsOpen = true
             return
         }
@@ -387,15 +390,26 @@ private fun FriendApp(activity: MainActivity) {
         notice = "Thinking with you…"
         scope.launch {
             try {
-                val answer = AiClient.reply(
-                    provider = activeProvider,
-                    apiKey = apiKeys[activeProvider].orEmpty(),
-                    model = model,
-                    tone = tone,
-                    memoryNotes = memoryNotes,
-                    importedHistory = importedHistory,
-                    history = messages.toList()
-                )
+                val answer = if (useAvai) {
+                    AiBridgeClient.reply(
+                        context = context,
+                        prompt = text,
+                        tone = tone,
+                        memory = memoryNotes,
+                        importedHistory = importedHistory,
+                        history = messages.toList()
+                    )
+                } else {
+                    AiClient.reply(
+                        provider = activeProvider,
+                        apiKey = apiKeys[activeProvider].orEmpty(),
+                        model = model,
+                        tone = tone,
+                        memoryNotes = memoryNotes,
+                        importedHistory = importedHistory,
+                        history = messages.toList()
+                    )
+                }
                 messages.add(ChatMessage("assistant", answer))
                 while (messages.size > 150) messages.removeAt(0)
                 saveHistory()
@@ -407,7 +421,7 @@ private fun FriendApp(activity: MainActivity) {
             } catch (error: Exception) {
                 thinking = false
                 speaking = false
-                val friendly = "I couldn't connect to " + activeProvider.label + ". " +
+                val friendly = (if (useAvai) "I couldn't get a response through AVai. " else "I couldn't connect to " + activeProvider.label + ". ") +
                     (error.message ?: "Check your connection, model, and API key in Settings.")
                 messages.add(ChatMessage("assistant", friendly))
                 while (messages.size > 150) messages.removeAt(0)
@@ -455,6 +469,12 @@ private fun FriendApp(activity: MainActivity) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(10), color = Gold, fontSize = 11.sp) }
+                TextButton(onClick = {
+                    useAvai = !useAvai
+                    store.putString("use_avai", useAvai.toString())
+                    notice = if (useAvai) "Friend will use AVai's selected provider; tap Connect to AVai to grant access." else "Direct mode uses keys stored in Friend."
+                }) { Text(if (useAvai) "AVai AI" else "Direct AI", color = if (useAvai) Gold else WarmWhite, fontSize = 11.sp) }
                 TextButton(onClick = { memoryOpen = true }) { Text("Memory", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = WarmWhite, fontSize = 12.sp) }
             }
@@ -465,11 +485,11 @@ private fun FriendApp(activity: MainActivity) {
                 try {
                     context.startActivity(Intent("com.cgl.avai.action.CONSENT").setPackage("com.cgl.avai"))
                 } catch (_: Exception) {
-                    notice = "Install the AVai app first. The app-to-app AI bridge is still being built."
+                    notice = "Install AVai first, then connect both apps using the same signed build."
                 }
             },
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
-        ) { Text("Connect to AVai · integration preview", fontSize = 12.sp) }
+        ) { Text(if (useAvai) "Connect / approve AVai access" else "Open AVai settings", fontSize = 12.sp) }
 
         Card(
             colors = CardDefaults.cardColors(containerColor = Panel),
@@ -619,6 +639,14 @@ private fun FriendApp(activity: MainActivity) {
         Text(
             "Friend is an AI companion, not a therapist. Your chosen provider receives the messages and memory sent to it.",
             color = Quiet, fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 1.dp, bottom = 2.dp)
+        )
+    }
+
+    if (accountOpen) {
+        CglAccountsDialog(
+            onDismiss = { accountOpen = false },
+            onStatus = { notice = it },
+            onAccountChanged = { accountLabel = if (it == "Sign in") "Account" else it }
         )
     }
 
