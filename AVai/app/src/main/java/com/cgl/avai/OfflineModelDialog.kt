@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
@@ -64,7 +66,15 @@ fun OfflineModelDialog(
                 busy = true
                 status = "Copying model into AVai's private storage…"
                 try {
+                    val previousPath = path
                     val model = withContext(Dispatchers.IO) { importModel(context, uri) }
+                    if (previousPath.isNotBlank() && previousPath != model.path) {
+                        LocalModelEngine.unload()
+                        withContext(Dispatchers.IO) {
+                            File(previousPath).delete()
+                            File(File(previousPath).parentFile, "litert-cache").deleteRecursively()
+                        }
+                    }
                     path = model.path
                     name = model.name
                     size = model.sizeBytes
@@ -73,7 +83,7 @@ fun OfflineModelDialog(
                     store.putString("local_model_name", model.name)
                     store.putString("local_model_size", model.sizeBytes.toString())
                     store.putString("local_model_sha256", model.sha256)
-                    status = "Imported and SHA-256 checked locally. Tap Use offline model to select it."
+                    status = "Imported. A SHA-256 fingerprint was calculated locally. Tap Use offline model to select it."
                     onStatus("Offline model imported")
                 } catch (error: Exception) {
                     status = error.message ?: "Model import failed."
@@ -90,7 +100,7 @@ fun OfflineModelDialog(
         title = { Text("Offline model (on-device)") },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 560.dp),
+                modifier = Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
@@ -151,7 +161,10 @@ fun OfflineModelDialog(
                         busy = true
                         try {
                             LocalModelEngine.unload()
-                            withContext(Dispatchers.IO) { File(path).delete() }
+                            withContext(Dispatchers.IO) {
+                                File(path).delete()
+                                File(File(path).parentFile, "litert-cache").deleteRecursively()
+                            }
                             listOf("local_model_path", "local_model_name", "local_model_size", "local_model_sha256")
                                 .forEach(store::remove)
                             path = ""
