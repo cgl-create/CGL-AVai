@@ -21,13 +21,15 @@ android {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
     }
-    kotlin {
-        compilerOptions {
-            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
-        }
-    }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
 }
+
+kotlin {
+    compilerOptions {
+        jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+    }
+}
+
 dependencies {
     implementation(platform("androidx.compose:compose-bom:2025.10.00"))
     implementation(platform("com.google.firebase:firebase-bom:34.19.0"))
