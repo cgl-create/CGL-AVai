@@ -97,7 +97,12 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     fun writeSessions() {
         val array = JSONArray()
         sessions.forEach { item ->
-            array.put(JSONObject().put("id", item.id).put("title", item.title).put("updatedAt", item.updatedAt))
+            array.put(JSONObject()
+                .put("id", item.id)
+                .put("title", item.title)
+                .put("updatedAt", item.updatedAt)
+                .put("provider", item.providerName.orEmpty())
+                .put("model", item.model.orEmpty()))
         }
         store.putString("chat_sessions", array.toString())
     }
@@ -112,7 +117,9 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         val updated = ChatSession(
             id = activeChatId,
             title = if (old == null || old.title == "New chat") firstPrompt?.ifBlank { "New chat" } ?: "New chat" else old.title,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
+            providerName = providerName,
+            model = model
         )
         sessions = (sessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
         writeSessions()
@@ -124,7 +131,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         activeChatId = UUID.randomUUID().toString()
         chats = emptyList()
         prompt = ""
-        val item = ChatSession(activeChatId, "New chat", System.currentTimeMillis())
+        val item = ChatSession(activeChatId, "New chat", System.currentTimeMillis(), providerName, model)
         sessions = (listOf(item) + sessions.filterNot { it.id == item.id }).sortedByDescending { it.updatedAt }
         store.putString("active_chat", activeChatId)
         writeSessions()
@@ -135,6 +142,12 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         if (item.id != activeChatId && chats.isNotEmpty()) persistChats()
         activeChatId = item.id
         store.putString("active_chat", item.id)
+        item.providerName?.takeIf { it.isNotBlank() }?.let { providerName = AIProvider.fromStored(it).name }
+        val selectedProvider = AIProvider.fromStored(providerName)
+        model = item.model?.takeIf { it.isNotBlank() }
+            ?: store.getString("model_" + selectedProvider.name, selectedProvider.defaultModel)
+        store.putString("provider", providerName)
+        store.putString("model", model)
         chats = loadMessages(store.getString("chat_" + item.id, "[]"))
         historyOpen = false
         status = item.title
@@ -450,7 +463,13 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
 
 }
 
-private data class ChatSession(val id: String, val title: String, val updatedAt: Long)
+private data class ChatSession(
+    val id: String,
+    val title: String,
+    val updatedAt: Long,
+    val providerName: String? = null,
+    val model: String? = null
+)
 
 private data class ApiKeyProfile(val id: String, val name: String, val provider: AIProvider)
 
@@ -473,7 +492,9 @@ private fun loadSessions(source: String): List<ChatSession> = try {
         if (id.isBlank()) null else ChatSession(
             id = id,
             title = item.optString("title", "Chat").ifBlank { "Chat" },
-            updatedAt = item.optLong("updatedAt", 0L)
+            updatedAt = item.optLong("updatedAt", 0L),
+            providerName = item.optString("provider").ifBlank { null },
+            model = item.optString("model").ifBlank { null }
         )
     }.take(100)
 } catch (_: Exception) { emptyList() }
