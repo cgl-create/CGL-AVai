@@ -35,12 +35,12 @@ object AiBridgeClient {
             val completed = AtomicBoolean(false)
             var bound = false
             var connectedMessenger: Messenger? = null
-            lateinit var connection: ServiceConnection
+            var connection: ServiceConnection? = null
 
             fun finish(result: String? = null, error: String? = null) {
                 if (!completed.compareAndSet(false, true)) return
                 if (bound) {
-                    try { appContext.unbindService(connection) } catch (_: Exception) { }
+                    try { connection?.let { appContext.unbindService(it) } } catch (_: Exception) { }
                     bound = false
                 }
                 if (!continuation.isActive) return
@@ -102,7 +102,7 @@ object AiBridgeClient {
 
             val intent = Intent().setComponent(ComponentName("com.cgl.avai", "com.cgl.avai.AiBridgeService"))
             try {
-                bound = appContext.bindService(intent, connection, Context.BIND_AUTO_CREATE)
+                bound = appContext.bindService(intent, connection!!, Context.BIND_AUTO_CREATE)
                 if (!bound) finish(error = "AVai is not installed or cannot be reached. Install AVai and open Connect to AVai.")
             } catch (error: Exception) {
                 finish(error = error.message ?: "Could not connect to AVai. Install or update AVai.")
@@ -111,7 +111,7 @@ object AiBridgeClient {
             continuation.invokeOnCancellation {
                 mainHandler.post {
                     if (bound && completed.compareAndSet(false, true)) {
-                        try { appContext.unbindService(connection) } catch (_: Exception) { }
+                        try { connection?.let { appContext.unbindService(it) } } catch (_: Exception) { }
                         bound = false
                     }
                 }
