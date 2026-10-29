@@ -28,7 +28,11 @@ object AiBridgeClient {
         memory: String,
         importedHistory: String,
         history: List<ChatMessage>,
-        chatId: String = "main"
+        chatId: String = "main",
+        provider: AIProvider = AIProvider.GEMINI,
+        model: String = "",
+        providerOverride: Boolean = false,
+        modelOverride: Boolean = false
     ): String = withTimeout(70_000L) {
         suspendCancellableCoroutine { continuation ->
             val appContext = context.applicationContext
@@ -77,6 +81,8 @@ object AiBridgeClient {
                     request.data = Bundle().apply {
                         putInt(AiBridgeProtocol.KEY_PROTOCOL_VERSION, 1)
                         putString(AiBridgeProtocol.KEY_CHAT_ID, chatId.take(64))
+                        putString(AiBridgeProtocol.KEY_PROVIDER, if (providerOverride) provider.name else "")
+                        putString(AiBridgeProtocol.KEY_MODEL, if (modelOverride) model.take(100) else "")
                         putString(AiBridgeProtocol.KEY_PROMPT, prompt.take(12000))
                         putString(AiBridgeProtocol.KEY_TONE, tone.take(80))
                         putString(AiBridgeProtocol.KEY_MEMORY, memory.take(8000))
