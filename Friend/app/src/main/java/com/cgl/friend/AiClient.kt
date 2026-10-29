@@ -12,8 +12,8 @@ import java.net.URL
 
 enum class AIProvider(val label: String, val keyName: String, val defaultModel: String) {
     GEMINI("Google Gemini", "api_key_gemini", "gemini-3.8-flash"),
-    OPENAI("OpenAI API", "api_key_openai", "gpt-5.5"),
-    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-5");
+    OPENAI("OpenAI API", "api_key_openai", "gpt-6-luna"),
+    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-5-5");
 
     companion object {
         fun fromStored(value: String): AIProvider =
