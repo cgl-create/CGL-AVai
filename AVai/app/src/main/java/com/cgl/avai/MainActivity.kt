@@ -226,7 +226,6 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                 Text("AVai", color = Paper, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text("CGL+ AI Workspace", color = Muted, fontSize = 12.sp)
             }
-            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
             TextButton(onClick = { historyOpen = true }) { Text("History", color = Gold) }
             TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = Gold) }
         }
@@ -283,6 +282,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = { startNewChat() }) { Text("New chat", color = Gold) }
+            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
             TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
         }
     }
