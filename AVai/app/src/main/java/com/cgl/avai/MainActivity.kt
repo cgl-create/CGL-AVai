@@ -340,8 +340,10 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     if (settingsOpen) {
         var chosen by remember { mutableStateOf(providerName) }
         var keyInput by remember { mutableStateOf("") }
-        var profileNameInput by remember { mutableStateOf("Default") }
         var selectedKeyProfileId by remember { mutableStateOf(store.getString("active_profile_" + providerName)) }
+        var profileNameInput by remember {
+            mutableStateOf(apiProfiles.firstOrNull { it.id == selectedKeyProfileId }?.name ?: "Default")
+        }
         var modelInput by remember { mutableStateOf(model) }
         var memoryInput by remember { mutableStateOf(store.getString("memory")) }
         AlertDialog(
