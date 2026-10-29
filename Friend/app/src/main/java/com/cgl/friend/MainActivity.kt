@@ -469,17 +469,23 @@ private fun FriendApp(activity: MainActivity) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(10), color = Gold, fontSize = 11.sp) }
-                TextButton(onClick = {
-                    useAvai = !useAvai
-                    store.putString("use_avai", useAvai.toString())
-                    notice = if (useAvai) "Friend will use AVai's selected provider; tap Connect to AVai to grant access." else "Direct mode uses keys stored in Friend."
-                }) { Text(if (useAvai) "AVai AI" else "Direct AI", color = if (useAvai) Gold else WarmWhite, fontSize = 11.sp) }
                 TextButton(onClick = { memoryOpen = true }) { Text("Memory", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = WarmWhite, fontSize = 12.sp) }
             }
         }
 
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
+            TextButton(onClick = {
+                useAvai = !useAvai
+                store.putString("use_avai", useAvai.toString())
+                notice = if (useAvai) "Friend will use AVai's selected provider; connect to AVai to grant access." else "Direct mode uses keys stored in Friend."
+            }) { Text(if (useAvai) "AI: AVai" else "AI: Direct", color = if (useAvai) Gold else WarmWhite, fontSize = 11.sp) }
+        }
         OutlinedButton(
             onClick = {
                 try {
