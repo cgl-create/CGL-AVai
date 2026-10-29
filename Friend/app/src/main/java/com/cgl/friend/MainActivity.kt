@@ -284,7 +284,7 @@ private fun FriendApp(activity: MainActivity) {
     }
     val apiKeys = remember {
         mutableStateMapOf<AIProvider, String>().apply {
-            AIProvider.entries.forEach { provider -> put(provider, store.getString(provider.keyName)) }
+            AIProvider.entries.forEach { provider -> put(provider, if (provider.keyName.isBlank()) "" else store.getString(provider.keyName)) }
         }
     }
     var model by remember {
@@ -309,6 +309,12 @@ private fun FriendApp(activity: MainActivity) {
     var useAvai by remember { mutableStateOf(store.getString("use_avai", "true") == "true") }
     var chatListOpen by remember { mutableStateOf(false) }
     var activeChatId by remember { mutableStateOf(store.getString("active_chat_id", "main")) }
+    var providerOverrideForChat by remember(activeChatId) {
+        mutableStateOf(store.getString("provider_override_" + activeChatId, "false") == "true")
+    }
+    var modelOverrideForChat by remember(activeChatId) {
+        mutableStateOf(store.getString("model_override_" + activeChatId, "false") == "true")
+    }
     var chatSessions by remember {
         val saved = loadFriendSessions(store.getString("chat_sessions", "[]"))
         val legacy = loadHistory(store.getString("chat_history", "[]"))
@@ -379,7 +385,12 @@ private fun FriendApp(activity: MainActivity) {
             array.put(JSONObject()
                 .put("id", item.id)
                 .put("title", item.title)
-                .put("updatedAt", item.updatedAt))
+                .put("updatedAt", item.updatedAt)
+                .put("provider", item.providerName.orEmpty())
+                .put("model", item.model.orEmpty())
+                .put("useAvai", item.useAvai)
+                .put("providerOverride", item.providerOverride)
+                .put("modelOverride", item.modelOverride))
         }
         store.putString("chat_sessions", array.toString())
         store.putString("active_chat_id", activeChatId)
@@ -401,7 +412,12 @@ private fun FriendApp(activity: MainActivity) {
         val updated = FriendChatSession(
             id = activeChatId,
             title = if (old == null || old.title == "New chat") firstPrompt?.ifBlank { "New chat" } ?: "New chat" else old.title,
-            updatedAt = System.currentTimeMillis()
+            updatedAt = System.currentTimeMillis(),
+            providerName = activeProvider.name,
+            model = model,
+            useAvai = useAvai,
+            providerOverride = providerOverrideForChat,
+            modelOverride = modelOverrideForChat
         )
         chatSessions = (chatSessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
         writeChatSessions()
@@ -412,7 +428,18 @@ private fun FriendApp(activity: MainActivity) {
         val id = UUID.randomUUID().toString()
         activeChatId = id
         store.putString("active_chat_id", id)
-        val item = FriendChatSession(id, "New chat", System.currentTimeMillis())
+        providerOverrideForChat = false
+        modelOverrideForChat = false
+        store.putString("provider_override_" + id, "false")
+        store.putString("model_override_" + id, "false")
+        val item = FriendChatSession(
+            id, "New chat", System.currentTimeMillis(),
+            providerName = activeProvider.name,
+            model = model,
+            useAvai = useAvai,
+            providerOverride = false,
+            modelOverride = false
+        )
         chatSessions = (listOf(item) + chatSessions.filterNot { it.id == id }).sortedByDescending { it.updatedAt }
         writeChatSessions()
         draft = ""
@@ -424,6 +451,13 @@ private fun FriendApp(activity: MainActivity) {
         if (item.id != activeChatId && messages.isNotEmpty()) saveHistory()
         activeChatId = item.id
         store.putString("active_chat_id", item.id)
+        item.providerName?.takeIf { it.isNotBlank() }?.let { activeProvider = AIProvider.fromStored(it) }
+        item.model?.takeIf { it.isNotBlank() }?.let { model = it }
+        useAvai = item.useAvai
+        providerOverrideForChat = item.providerOverride
+        modelOverrideForChat = item.modelOverride
+        store.putString("provider_override_" + item.id, providerOverrideForChat.toString())
+        store.putString("model_override_" + item.id, modelOverrideForChat.toString())
         chatListOpen = false
         notice = item.title
     }
@@ -434,6 +468,8 @@ private fun FriendApp(activity: MainActivity) {
         writeChatSessions()
         if (item.id == activeChatId) {
             activeChatId = UUID.randomUUID().toString()
+            providerOverrideForChat = false
+            modelOverrideForChat = false
             store.putString("active_chat_id", activeChatId)
         }
         notice = "Conversation deleted"
@@ -442,6 +478,12 @@ private fun FriendApp(activity: MainActivity) {
     fun sendMessage(raw: String) {
         val text = raw.trim()
         if (text.isBlank() || busy) return
+        if (!useAvai && activeProvider == AIProvider.LOCAL) {
+            notice = "Offline models run through AVai. Switch to AI: AVai to use the local model."
+            useAvai = true
+            store.putString("use_avai", "true")
+            return
+        }
         if (!useAvai && apiKeys[activeProvider].isNullOrBlank()) {
             notice = "Add a " + activeProvider.label + " API key in Settings, or switch to AVai mode."
             settingsOpen = true
@@ -467,7 +509,11 @@ private fun FriendApp(activity: MainActivity) {
                         memory = memoryNotes,
                         importedHistory = importedHistory,
                         history = messages.toList(),
-                        chatId = activeChatId
+                        chatId = activeChatId,
+                        provider = activeProvider,
+                        model = model,
+                        providerOverride = providerOverrideForChat,
+                        modelOverride = modelOverrideForChat
                     )
                 } else {
                     AiClient.reply(
@@ -539,7 +585,10 @@ private fun FriendApp(activity: MainActivity) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = { chatListOpen = true }) { Text("Chats", color = Gold, fontSize = 12.sp) }
+                TextButton(onClick = {
+                    chatSessions = loadFriendSessions(store.getString("chat_sessions", "[]"))
+                    chatListOpen = true
+                }) { Text("Chats", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { memoryOpen = true }) { Text("Memory", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = WarmWhite, fontSize = 12.sp) }
             }
@@ -554,6 +603,7 @@ private fun FriendApp(activity: MainActivity) {
             TextButton(onClick = {
                 useAvai = !useAvai
                 store.putString("use_avai", useAvai.toString())
+                saveHistory()
                 notice = if (useAvai) "Friend will use AVai's selected provider; connect to AVai to grant access." else "Direct mode uses keys stored in Friend."
             }) { Text(if (useAvai) "AI: AVai" else "AI: Direct", color = if (useAvai) Gold else WarmWhite, fontSize = 11.sp) }
         }
@@ -610,7 +660,10 @@ private fun FriendApp(activity: MainActivity) {
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Text("Conversation", color = WarmWhite, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-            Text(activeProvider.label, color = Gold, fontSize = 11.sp)
+            Text(
+                if (useAvai && !providerOverrideForChat) "AVai-selected provider" else activeProvider.label,
+                color = Gold, fontSize = 11.sp
+            )
             TextButton(onClick = {
                 activity.stopSpeaking()
                 messages.clear()
@@ -765,10 +818,15 @@ private fun FriendApp(activity: MainActivity) {
             onDismiss = { settingsOpen = false },
             onSave = { selectedProvider, newKey, newModel, newVoice, newRate ->
                 activeProvider = selectedProvider
-                model = newModel.ifBlank { selectedProvider.defaultModel }
+                model = if (selectedProvider == AIProvider.LOCAL) selectedProvider.defaultModel
+                    else newModel.ifBlank { selectedProvider.defaultModel }
+                providerOverrideForChat = true
+                modelOverrideForChat = selectedProvider != AIProvider.LOCAL && model.isNotBlank()
                 store.putString("provider", selectedProvider.name)
                 store.putString("model_" + selectedProvider.name, model)
-                if (newKey.isNotBlank()) {
+                store.putString("provider_override_" + activeChatId, "true")
+                store.putString("model_override_" + activeChatId, modelOverrideForChat.toString())
+                if (selectedProvider != AIProvider.LOCAL && newKey.isNotBlank()) {
                     apiKeys[selectedProvider] = newKey.trim()
                     store.putString(selectedProvider.keyName, newKey.trim())
                 }
@@ -776,8 +834,11 @@ private fun FriendApp(activity: MainActivity) {
                 speakingRate = newRate
                 store.putString("voice_name", voiceName)
                 store.putString("speech_rate", speakingRate.toString())
+                saveHistory()
                 settingsOpen = false
-                notice = "Settings saved on this device."
+                notice = if (selectedProvider == AIProvider.LOCAL)
+                    "Offline model selected in Friend. Choose AI: AVai and approve the connection."
+                else "Settings saved on this device."
             },
             onClearKey = { selectedProvider ->
                 apiKeys[selectedProvider] = ""
@@ -1087,7 +1148,16 @@ private fun MemoryDialog(
     )
 }
 
-private data class FriendChatSession(val id: String, val title: String, val updatedAt: Long)
+private data class FriendChatSession(
+    val id: String,
+    val title: String,
+    val updatedAt: Long,
+    val providerName: String? = null,
+    val model: String? = null,
+    val useAvai: Boolean = true,
+    val providerOverride: Boolean = false,
+    val modelOverride: Boolean = false
+)
 
 private fun loadFriendSessions(source: String): List<FriendChatSession> = try {
     val array = JSONArray(source)
@@ -1097,7 +1167,12 @@ private fun loadFriendSessions(source: String): List<FriendChatSession> = try {
         if (id.isBlank()) null else FriendChatSession(
             id = id,
             title = item.optString("title", "Chat").ifBlank { "Chat" }.take(80),
-            updatedAt = item.optLong("updatedAt", 0L)
+            updatedAt = item.optLong("updatedAt", 0L),
+            providerName = item.optString("provider").ifBlank { null },
+            model = item.optString("model").ifBlank { null },
+            useAvai = item.optBoolean("useAvai", true),
+            providerOverride = item.optBoolean("providerOverride", false),
+            modelOverride = item.optBoolean("modelOverride", false)
         )
     }.take(100)
 } catch (_: Exception) { emptyList() }
