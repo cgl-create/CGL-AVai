@@ -75,7 +75,13 @@ class AiBridgeService : Service() {
 
             scope.launch {
                 try {
-                    val provider = AIProvider.fromStored(store.getString("provider", AIProvider.GEMINI.name))
+                    val requestedProvider = input.getString(AiBridgeProtocol.KEY_PROVIDER).orEmpty()
+                    val provider = if (requestedProvider.isBlank()) {
+                        AIProvider.fromStored(store.getString("provider", AIProvider.GEMINI.name))
+                    } else {
+                        AIProvider.fromStored(requestedProvider)
+                    }
+                    val requestedModel = input.getString(AiBridgeProtocol.KEY_MODEL).orEmpty().take(100)
                     val activeProfileId = store.getString("active_profile_" + provider.name)
                     val key = if (provider == AIProvider.LOCAL) "" else
                         (if (activeProfileId.isNotBlank()) store.getString("profile_key_" + activeProfileId) else "")
@@ -87,9 +93,11 @@ class AiBridgeService : Service() {
                     if (provider == AIProvider.LOCAL && store.getString("local_model_path").isBlank()) {
                         throw IllegalStateException("Choose a .litertlm offline model in AVai → Settings before asking Friend.")
                     }
-                    val model = store.getString("model_" + provider.name)
-                        .ifBlank { store.getString("model", provider.defaultModel) }
-                        .ifBlank { provider.defaultModel }
+                    val model = requestedModel.ifBlank {
+                        store.getString("model_" + provider.name)
+                            .ifBlank { store.getString("model", provider.defaultModel) }
+                            .ifBlank { provider.defaultModel }
+                    }
                     val memory = listOf(store.getString("memory"), friendMemory)
                         .filter { it.isNotBlank() }
                         .joinToString("\n\n")
