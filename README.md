@@ -1,42 +1,67 @@
 # CGL+ AVai
 
-**CGL+ AVai** is the umbrella project for two Android apps: **AVai** and **Friend**.
+**CGL+ AVai** is a two-app Android project: **AVai** is the AI workspace; **Friend** is the face-and-voice companion.
 
-- **AVai** is the AI workspace: multi-provider API connections, editable model IDs, normal AI chat, local encrypted chat history, and user-controlled memory.
-- **Friend** is the companion app with the animated eyes-and-mouth face, voice input/output, wellbeing-oriented chat, and a preview entry point for requesting AVai access.
-- The existing AVai web/PWA experience remains at the repository root while native development continues.
+## AVai (AVai/)
 
-## Native apps
+- Native Kotlin + Jetpack Compose chat workspace.
+- Gemini, OpenAI API, Anthropic Claude, and an on-device LiteRT-LM provider.
+- Named API-key profiles per cloud provider. Keys are encrypted in app-private storage with Android Keystore; no API key is sent to Friend.
+- Model ID selection and saved chat sessions with open/delete, including provider/model choices per conversation.
+- Local user memory notes and encrypted local conversation history.
+- Import a compatible .litertlm model into app-private storage, compute a SHA-256 fingerprint, check available storage/RAM, run the model on-device, and delete it when no longer needed.
+- Consent UI and revocable permission state for Friend's inference requests.
+- CGL+ Accounts email/password and Google sign-in UI, ready for the real Firebase app configuration.
 
-### AVai — `AVai/`
-Native Kotlin + Jetpack Compose app. Includes a chat workspace, model selection for Gemini/OpenAI API/Anthropic, local encrypted API-key storage via Android Keystore, saved conversation history, editable memory notes, and a consent-screen prototype for Friend.
+## Friend (Friend/)
 
-### Friend — `Friend/`
-Native Kotlin + Jetpack Compose app. Includes the eyes-and-mouth avatar, Android speech recognition and text-to-speech, wellbeing-focused conversation UI, local encrypted storage, memory notes and chat import.
+- Animated face drawn with **only two eyes and a mouth**.
+- Voice input using Android speech recognition and text-to-speech replies.
+- Supportive conversation UI, editable local memory, and imported ChatGPT conversation excerpts.
+- Multiple saved chat sessions, local history, new/open/delete chat actions.
+- Uses AVai by default. You can select a cloud provider/model per conversation in Friend settings; AVai executes the request and keeps provider keys on its side. Friend can also be switched to direct mode with keys stored in Friend.
+- CGL+ Accounts sign-in UI.
+
+## Friend ↔ AVai security boundary
+
+The app-to-app bridge uses an explicit Android Messenger service protected by a signature-level permission. AVai verifies that the calling UID includes com.cgl.friend and that both installed apps share a signing certificate, then checks the user's **Allow once / Always allow / Deny** grant before running inference. One-time access expires after five minutes and is consumed on the next valid request; persistent access can be revoked from AVai settings.
+
+Only message/context fields travel through the bridge. **API keys, Firebase ID tokens, and provider secrets never travel from AVai to Friend.** A successful Friend conversation is mirrored to AVai's encrypted local chat store so it can appear in AVai's chat history. The apps must be installed from the same signed build for the signature-protected bridge to work.
+
+## Offline models
+
+AVai uses Google's [LiteRT-LM Android runtime](https://ai.google.dev/edge/litert-lm/android). Import a model file ending in .litertlm from a trusted publisher and read its license and device requirements first. AVai records a local SHA-256 fingerprint; the fingerprint is **not** a trusted-publisher signature or proof that a downloaded file is authentic. Model file size is not the same as runtime RAM usage, and a model may be too large or slow for a particular phone. Test any model on the target device. Models are user-imported and are not bundled into the APK.
+
+## Firebase / CGL+ Accounts setup still required
+
+The code cannot guess private Firebase app configuration. Register these two Android app IDs in the existing cgl-accounts Firebase project:
+
+- AVai: com.cgl.avai
+- Friend: com.cgl.friend
+
+Add the matching google-services.json for each app and register the SHA fingerprints of the signing certificate used for Google sign-in. See [FIREBASE_SETUP.md](./FIREBASE_SETUP.md). Until real app configuration and valid OAuth signing fingerprints are installed, the sign-in UI deliberately reports that setup is missing. Firebase Authentication is currently for identity only; chats/memory/API keys are **not** synced to Firestore.
 
 ## Build APKs
 
-GitHub Actions has separate workflows:
+GitHub Actions provides:
+- [Combined build — both APKs on the same runner](./.github/workflows/android-apps-build.yml)
+- [AVai APK workflow](./.github/workflows/avai-android-build.yml)
+- [Friend APK workflow](./.github/workflows/friend-android-build.yml)
 
-- [Build AVai APK](./.github/workflows/avai-android-build.yml) — artifact name `AVai-debug-apk`.
-- [Build Friend APK](./.github/workflows/friend-android-build.yml) — artifact name `Friend-debug-apk`.
-
-Open the repository's **Actions** tab, select a successful workflow run, download its artifact ZIP, extract it, and install the included `app-debug.apk` on an Android device. These are debug builds, not Play Store release builds.
-
-## Important implementation status
-
-This is an active prototype, not yet the complete two-app product. AVai and Friend currently still have their own AI request paths. The Friend-to-AVai button opens AVai's consent-screen prototype, but **the secure inter-app inference bridge is not active yet**; the consent screen explicitly says so and does not transfer API keys. Firebase/CGL+ Accounts sign-in, cloud sync, local/offline LLM downloads, shared cross-app chat history, and production permission persistence also remain to be implemented and tested.
-
-Firebase configuration files and OAuth signing fingerprints must come from the real Firebase project. Never commit API keys, `google-services.json` credentials belonging to a private app config, signing keys, or secrets to a public repository. API keys should remain on-device and must never be stored in Firestore or passed through deep-link query parameters.
-
-## AI provider notes
-
-AVai uses provider API keys supplied by the user. An OpenAI API key is billed separately from a ChatGPT subscription. Model IDs are editable because model availability and account access can vary by provider and date. Verify the selected model and your provider's billing/quota before use.
-
-## Safety and privacy
-
-Friend is an AI companion, not a therapist or emergency service. AI outputs can be inaccurate. Users should control whether messages are sent to cloud providers and whether history/memory is retained. AVai and Friend currently keep local app data encrypted using Android Keystore-backed AES-GCM; this is defense in depth, not a guarantee against a rooted or otherwise compromised device.
+Use the artifacts from the **same successful combined workflow run**: AVai-debug-apk and Friend-debug-apk. That matters because the signature-level bridge requires both APKs to be signed by the same certificate. If you use separate workflow runs, configure the stable debug keystore secret described in FIREBASE_SETUP.md. These are debug builds, not Play Store release builds.
 
 ## Developer setup
 
-Open `AVai/` or `Friend/` in Android Studio with JDK 17 and Android SDK Platform 36. The corresponding GitHub Actions workflows build each debug APK.
+- JDK 17 and Android SDK Platform 36.
+- Open AVai/ or Friend/ in Android Studio and run assembleDebug.
+- Optional Firebase setup is provided by the real per-app configuration files, or by the documented GitHub Actions secrets.
+- The combined workflow compiles both apps. Build success does not replace testing on a physical device.
+
+## Known remaining release work
+
+- Add the real Firebase app config and verify email/password + Google sign-in against the actual CGL+ Accounts project.
+- Device-test the signature-protected bridge, consent revocation, offline model loading, speech permissions, and model performance.
+- Production signing, privacy/accessibility review, model-download source/license checks, and signed release packaging.
+- This project does not implement Firestore cloud sync, automatic model downloading, automatic cross-device memory sync, or Play Store release signing yet.
+
+Friend is an AI companion, not a therapist or emergency service. AI responses can be inaccurate. User data should remain user-controlled; never store API keys in Firestore or commit API keys, signing keys, or Firebase service-account credentials.
