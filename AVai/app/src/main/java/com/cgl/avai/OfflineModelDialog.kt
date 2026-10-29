@@ -250,7 +250,7 @@ private fun importModel(context: Context, uri: Uri): ImportedModel {
         }
         require(copied > 0L) { "The selected model file is empty." }
         if (reportedSize > 0L) require(copied == reportedSize) { "The model import was incomplete. Please select the file again." }
-        val hash = digest.digest().joinToString("") { "%02x".format(it) }
+        val hash = digest.digest().joinToString("") { "%02x".format(it.toInt() and 0xff) }
         val safeLabel = displayName.replace(Regex("[^A-Za-z0-9._-]"), "_").take(70)
         val destination = File(destinationDir, "${hash.take(16)}-$safeLabel")
         if (destination.exists()) temporary.delete()
