@@ -75,9 +75,10 @@ class AiBridgeService : Service() {
             scope.launch {
                 try {
                     val provider = AIProvider.fromStored(store.getString("provider", AIProvider.GEMINI.name))
-                    val key = store.getString("key_" + provider.name).ifBlank {
-                        store.getString(provider.keyName)
-                    }
+                    val activeProfileId = store.getString("active_profile_" + provider.name)
+                    val key = (if (activeProfileId.isNotBlank()) store.getString("profile_key_" + activeProfileId) else "")
+                        .ifBlank { store.getString("key_" + provider.name) }
+                        .ifBlank { store.getString(provider.keyName) }
                     if (key.isBlank()) throw IllegalStateException("Open AVai → Settings and add an API key for the selected provider.")
                     val model = store.getString("model_" + provider.name)
                         .ifBlank { store.getString("model", provider.defaultModel) }
