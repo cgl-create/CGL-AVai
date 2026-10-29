@@ -223,7 +223,7 @@ fun OfflineModelDialog(
                             LocalModelEngine.unload()
                             withContext(Dispatchers.IO) {
                                 File(path).delete()
-                                File(File(path).parentFile, "litert-cache").deleteRecursively()
+                                File(File(path).parentFile, "cache-" + File(path).nameWithoutExtension.take(48)).deleteRecursively()
                             }
                             installedModels = installedModels.filterNot { it.path == path }
                             saveCatalog()
