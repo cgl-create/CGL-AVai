@@ -306,12 +306,25 @@ private fun FriendApp(activity: MainActivity) {
     var accountOpen by remember { mutableStateOf(false) }
     var accountLabel by remember { mutableStateOf("Account") }
     var useAvai by remember { mutableStateOf(store.getString("use_avai", "true") == "true") }
+    var chatListOpen by remember { mutableStateOf(false) }
+    var activeChatId by remember { mutableStateOf(store.getString("active_chat_id", "main")) }
+    var chatSessions by remember {
+        val saved = loadFriendSessions(store.getString("chat_sessions", "[]"))
+        val legacy = loadHistory(store.getString("chat_history", "[]"))
+        val legacyId = store.getString("active_chat_id", "main")
+        val title = legacy.firstOrNull { it.role == "user" }?.text?.replace("\n", " ")?.take(38) ?: "Previous chat"
+        mutableStateOf(if (saved.isNotEmpty()) saved else if (legacy.isNotEmpty()) listOf(FriendChatSession(legacyId, title, System.currentTimeMillis())) else emptyList())
+    }
     var memoryOpen by remember { mutableStateOf(false) }
     var importing by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
 
-    val messages = remember {
-        mutableStateListOf<ChatMessage>().apply { addAll(loadHistory(store.getString("chat_history", "[]"))) }
+    val messages = remember(activeChatId) {
+        val savedHistory = store.getString(
+            "chat_history_" + activeChatId,
+            if (activeChatId == "main") store.getString("chat_history", "[]") else "[]"
+        )
+        mutableStateListOf<ChatMessage>().apply { addAll(loadHistory(savedHistory)) }
     }
 
     val micPermission = rememberLauncherForActivityResult(
@@ -359,6 +372,18 @@ private fun FriendApp(activity: MainActivity) {
         }
     }
 
+    fun writeChatSessions() {
+        val array = JSONArray()
+        chatSessions.forEach { item ->
+            array.put(JSONObject()
+                .put("id", item.id)
+                .put("title", item.title)
+                .put("updatedAt", item.updatedAt))
+        }
+        store.putString("chat_sessions", array.toString())
+        store.putString("active_chat_id", activeChatId)
+    }
+
     fun saveHistory() {
         val array = JSONArray()
         messages.takeLast(150).forEach { message ->
@@ -367,7 +392,50 @@ private fun FriendApp(activity: MainActivity) {
                 .put("text", message.text)
                 .put("timestamp", message.timestamp))
         }
-        store.putString("chat_history", array.toString())
+        val json = array.toString()
+        store.putString("chat_history_" + activeChatId, json)
+        store.putString("chat_history", json)
+        val old = chatSessions.firstOrNull { it.id == activeChatId }
+        val firstPrompt = messages.firstOrNull { it.role == "user" }?.text?.replace("\n", " ")?.take(38)
+        val updated = FriendChatSession(
+            id = activeChatId,
+            title = if (old == null || old.title == "New chat") firstPrompt?.ifBlank { "New chat" } ?: "New chat" else old.title,
+            updatedAt = System.currentTimeMillis()
+        )
+        chatSessions = (chatSessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
+        writeChatSessions()
+    }
+
+    fun startNewFriendChat() {
+        if (messages.isNotEmpty()) saveHistory()
+        val id = UUID.randomUUID().toString()
+        activeChatId = id
+        store.putString("active_chat_id", id)
+        val item = FriendChatSession(id, "New chat", System.currentTimeMillis())
+        chatSessions = (listOf(item) + chatSessions.filterNot { it.id == id }).sortedByDescending { it.updatedAt }
+        writeChatSessions()
+        draft = ""
+        chatListOpen = false
+        notice = "New conversation started"
+    }
+
+    fun openFriendChat(item: FriendChatSession) {
+        if (item.id != activeChatId && messages.isNotEmpty()) saveHistory()
+        activeChatId = item.id
+        store.putString("active_chat_id", item.id)
+        chatListOpen = false
+        notice = item.title
+    }
+
+    fun deleteFriendChat(item: FriendChatSession) {
+        store.remove("chat_history_" + item.id)
+        chatSessions = chatSessions.filterNot { it.id == item.id }
+        writeChatSessions()
+        if (item.id == activeChatId) {
+            activeChatId = UUID.randomUUID().toString()
+            store.putString("active_chat_id", activeChatId)
+        }
+        notice = "Conversation deleted"
     }
 
     fun sendMessage(raw: String) {
@@ -469,6 +537,7 @@ private fun FriendApp(activity: MainActivity) {
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                TextButton(onClick = { chatListOpen = true }) { Text("Chats", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { memoryOpen = true }) { Text("Memory", color = Gold, fontSize = 12.sp) }
                 TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = WarmWhite, fontSize = 12.sp) }
             }
@@ -645,6 +714,33 @@ private fun FriendApp(activity: MainActivity) {
         Text(
             "Friend is an AI companion, not a therapist. Your chosen provider receives the messages and memory sent to it.",
             color = Quiet, fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 1.dp, bottom = 2.dp)
+        )
+    }
+
+    if (chatListOpen) {
+        AlertDialog(
+            onDismissRequest = { chatListOpen = false },
+            title = { Text("Friend conversations", color = WarmWhite) },
+            text = {
+                Column(Modifier.heightIn(max = 480.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    if (chatSessions.isEmpty()) Text("Your saved conversations will appear here.", color = Quiet, fontSize = 12.sp)
+                    chatSessions.sortedByDescending { it.updatedAt }.forEach { item ->
+                        Row(
+                            Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            TextButton(onClick = { openFriendChat(item) }, modifier = Modifier.weight(1f)) {
+                                Text((if (item.id == activeChatId) "• " else "") + item.title, color = if (item.id == activeChatId) Gold else WarmWhite, maxLines = 2)
+                            }
+                            TextButton(onClick = { deleteFriendChat(item) }) { Text("Delete", color = Quiet, fontSize = 10.sp) }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { chatListOpen = false }) { Text("Close", color = Gold) } },
+            dismissButton = { TextButton(onClick = { startNewFriendChat() }) { Text("New chat", color = Gold) } },
+            containerColor = Panel
         )
     }
 
@@ -988,6 +1084,21 @@ private fun MemoryDialog(
         dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel", color = Quiet) } }
     )
 }
+
+private data class FriendChatSession(val id: String, val title: String, val updatedAt: Long)
+
+private fun loadFriendSessions(source: String): List<FriendChatSession> = try {
+    val array = JSONArray(source)
+    (0 until array.length()).mapNotNull { index ->
+        val item = array.optJSONObject(index) ?: return@mapNotNull null
+        val id = item.optString("id")
+        if (id.isBlank()) null else FriendChatSession(
+            id = id,
+            title = item.optString("title", "Chat").ifBlank { "Chat" }.take(80),
+            updatedAt = item.optLong("updatedAt", 0L)
+        )
+    }.take(100)
+} catch (_: Exception) { emptyList() }
 
 private fun loadHistory(source: String): List<ChatMessage> {
     return try {
