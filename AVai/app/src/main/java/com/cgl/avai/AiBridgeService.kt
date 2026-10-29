@@ -49,11 +49,11 @@ class AiBridgeService : Service() {
             val callback = message.replyTo ?: return
             val callerUid = message.sendingUid
             val input = message.data ?: Bundle()
-            val grantAllowed = consumeOneRequestOrCheckPersistentGrant()
             if (!isTrustedFriend(callerUid)) {
                 reply(callback, error = "The calling app could not be verified. Reinstall AVai and Friend from the same signed build.")
                 return
             }
+            val grantAllowed = consumeOneRequestOrCheckPersistentGrant()
             if (!grantAllowed) {
                 reply(callback, error = "Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
                 return
