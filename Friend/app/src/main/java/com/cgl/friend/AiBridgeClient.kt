@@ -27,7 +27,8 @@ object AiBridgeClient {
         tone: String,
         memory: String,
         importedHistory: String,
-        history: List<ChatMessage>
+        history: List<ChatMessage>,
+        chatId: String = "main"
     ): String = withTimeout(70_000L) {
         suspendCancellableCoroutine { continuation ->
             val appContext = context.applicationContext
@@ -66,12 +67,16 @@ object AiBridgeClient {
                     connectedMessenger = Messenger(binder)
                     val json = JSONArray()
                     history.takeLast(24).forEach { item ->
-                        json.put(JSONObject().put("role", item.role).put("text", item.text.take(12000)))
+                        json.put(JSONObject()
+                            .put("role", item.role)
+                            .put("text", item.text.take(4000))
+                            .put("timestamp", item.timestamp))
                     }
                     val request = Message.obtain(null, AiBridgeProtocol.MESSAGE_INFER)
                     request.replyTo = responseMessenger
                     request.data = Bundle().apply {
                         putInt(AiBridgeProtocol.KEY_PROTOCOL_VERSION, 1)
+                        putString(AiBridgeProtocol.KEY_CHAT_ID, chatId.take(64))
                         putString(AiBridgeProtocol.KEY_PROMPT, prompt.take(12000))
                         putString(AiBridgeProtocol.KEY_TONE, tone.take(80))
                         putString(AiBridgeProtocol.KEY_MEMORY, memory.take(8000))
