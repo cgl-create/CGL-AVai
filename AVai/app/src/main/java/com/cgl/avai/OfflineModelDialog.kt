@@ -52,6 +52,19 @@ fun OfflineModelDialog(
     var name by remember { mutableStateOf(store.getString("local_model_name")) }
     var size by remember { mutableStateOf(store.getString("local_model_size").toLongOrNull() ?: 0L) }
     var sha by remember { mutableStateOf(store.getString("local_model_sha256")) }
+    var installedModels by remember {
+        val saved = loadModelCatalog(store.getString("local_models", "[]")).filter { File(it.path).isFile }
+        val legacyPath = store.getString("local_model_path")
+        val legacy = if (legacyPath.isNotBlank() && File(legacyPath).isFile) {
+            listOf(ImportedModel(
+                legacyPath,
+                store.getString("local_model_name", File(legacyPath).name),
+                store.getString("local_model_size").toLongOrNull() ?: File(legacyPath).length(),
+                store.getString("local_model_sha256")
+            ))
+        } else emptyList()
+        mutableStateOf(if (saved.isNotEmpty()) saved else legacy)
+    }
     var status by remember { mutableStateOf(if (path.isBlank()) "No offline model imported yet." else "Offline model ready to load.") }
     var busy by remember { mutableStateOf(false) }
     var showDeleteConfirm by remember { mutableStateOf(false) }
@@ -60,29 +73,39 @@ fun OfflineModelDialog(
         ActivityManager.MemoryInfo().also(manager::getMemoryInfo)
     }
 
+    fun saveCatalog() {
+        val array = org.json.JSONArray()
+        installedModels.forEach { item ->
+            array.put(org.json.JSONObject()
+                .put("path", item.path)
+                .put("name", item.name)
+                .put("sizeBytes", item.sizeBytes)
+                .put("sha256", item.sha256))
+        }
+        store.putString("local_models", array.toString())
+    }
+
+    fun selectModel(item: ImportedModel) {
+        path = item.path
+        name = item.name
+        size = item.sizeBytes
+        sha = item.sha256
+        store.putString("local_model_path", item.path)
+        store.putString("local_model_name", item.name)
+        store.putString("local_model_size", item.sizeBytes.toString())
+        store.putString("local_model_sha256", item.sha256)
+    }
+
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) {
             scope.launch {
                 busy = true
                 status = "Copying model into AVai's private storage…"
                 try {
-                    val previousPath = path
                     val model = withContext(Dispatchers.IO) { importModel(context, uri) }
-                    if (previousPath.isNotBlank() && previousPath != model.path) {
-                        LocalModelEngine.unload()
-                        withContext(Dispatchers.IO) {
-                            File(previousPath).delete()
-                            File(File(previousPath).parentFile, "litert-cache").deleteRecursively()
-                        }
-                    }
-                    path = model.path
-                    name = model.name
-                    size = model.sizeBytes
-                    sha = model.sha256
-                    store.putString("local_model_path", model.path)
-                    store.putString("local_model_name", model.name)
-                    store.putString("local_model_size", model.sizeBytes.toString())
-                    store.putString("local_model_sha256", model.sha256)
+                    installedModels = (installedModels.filterNot { it.path == model.path } + model).takeLast(20)
+                    saveCatalog()
+                    selectModel(model)
                     status = "Imported. A SHA-256 fingerprint was calculated locally. Tap Use offline model to select it."
                     onStatus("Offline model imported")
                 } catch (error: Exception) {
@@ -118,7 +141,7 @@ fun OfflineModelDialog(
                     fontSize = 11.sp
                 )
                 if (path.isBlank()) {
-                    Text("No model selected", fontSize = 12.sp)
+                    Text("No offline model selected", fontSize = 12.sp)
                 } else {
                     Text(name.ifBlank { File(path).name }, fontSize = 13.sp)
                     Text("File size: " + formatBytes(size), fontSize = 11.sp)
@@ -127,6 +150,27 @@ fun OfflineModelDialog(
                     }
                     Text("SHA-256: " + sha, fontSize = 10.sp)
                     Text("Stored privately at: " + File(path).parentFile?.name + "/" + File(path).name, fontSize = 10.sp)
+                }
+                if (installedModels.isNotEmpty()) {
+                    Text("Installed models · ${installedModels.size}/20", fontSize = 12.sp)
+                    installedModels.forEach { item ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text(item.name, fontSize = 11.sp, maxLines = 2)
+                                Text(formatBytes(item.sizeBytes), fontSize = 10.sp)
+                            }
+                            TextButton(
+                                onClick = {
+                                    selectModel(item)
+                                    status = "Selected ${item.name}"
+                                },
+                                enabled = item.path != path
+                            ) { Text(if (item.path == path) "Selected" else "Select", fontSize = 11.sp) }
+                        }
+                    }
                 }
                 Text(status, fontSize = 11.sp)
                 OutlinedButton(
@@ -181,14 +225,22 @@ fun OfflineModelDialog(
                                 File(path).delete()
                                 File(File(path).parentFile, "litert-cache").deleteRecursively()
                             }
-                            listOf("local_model_path", "local_model_name", "local_model_size", "local_model_sha256")
-                                .forEach(store::remove)
-                            path = ""
-                            name = ""
-                            size = 0L
-                            sha = ""
-                            status = "Offline model deleted."
-                            onStatus("Offline model deleted")
+                            installedModels = installedModels.filterNot { it.path == path }
+                            saveCatalog()
+                            if (installedModels.isNotEmpty()) {
+                                selectModel(installedModels.first())
+                                status = "Model deleted. Selected ${name}."
+                                onStatus(status)
+                            } else {
+                                listOf("local_model_path", "local_model_name", "local_model_size", "local_model_sha256")
+                                    .forEach(store::remove)
+                                path = ""
+                                name = ""
+                                size = 0L
+                                sha = ""
+                                status = "Offline model deleted."
+                                onStatus("Offline model deleted")
+                            }
                         } catch (error: Exception) {
                             status = error.message ?: "Could not delete the loaded model."
                         } finally {
@@ -202,6 +254,20 @@ fun OfflineModelDialog(
         )
     }
 }
+
+private fun loadModelCatalog(source: String): List<ImportedModel> = try {
+    val array = org.json.JSONArray(source)
+    (0 until array.length()).mapNotNull { index ->
+        val item = array.optJSONObject(index) ?: return@mapNotNull null
+        val path = item.optString("path")
+        if (path.isBlank()) null else ImportedModel(
+            path = path,
+            name = item.optString("name", File(path).name),
+            sizeBytes = item.optLong("sizeBytes", 0L),
+            sha256 = item.optString("sha256")
+        )
+    }.takeLast(20)
+} catch (_: Exception) { emptyList() }
 
 private fun importModel(context: Context, uri: Uri): ImportedModel {
     val resolver = context.contentResolver
