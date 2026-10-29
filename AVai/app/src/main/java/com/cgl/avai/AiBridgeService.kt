@@ -67,7 +67,8 @@ class AiBridgeService : Service() {
                 reply(callback, error = "Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
                 return
             }
-            val history = parseHistory(input.getString(AiBridgeProtocol.KEY_HISTORY_JSON).orEmpty())
+            val friendChatId = input.getString(AiBridgeProtocol.KEY_CHAT_ID).orEmpty().take(64)
+            val history = parseHistory(input.getString(AiBridgeProtocol.KEY_HISTORY_JSON).orEmpty()).takeLast(24)
             val tone = input.getString(AiBridgeProtocol.KEY_TONE).orEmpty().take(80).ifBlank { "clear, calm and helpful" }
             val friendMemory = input.getString(AiBridgeProtocol.KEY_MEMORY).orEmpty().take(8000)
             val imported = input.getString(AiBridgeProtocol.KEY_IMPORTED_HISTORY).orEmpty().takeLast(10000)
@@ -97,6 +98,7 @@ class AiBridgeService : Service() {
                         provider, key, model, tone, memory, imported, history,
                         localModelPath = store.getString("local_model_path")
                     )
+                    persistFriendConversation(friendChatId, history, answer, provider, model)
                     reply(callback, result = answer)
                 } catch (error: Exception) {
                     reply(callback, error = error.message ?: "AVai could not complete the request.")
@@ -122,12 +124,22 @@ class AiBridgeService : Service() {
         val packages = packageManager.getPackagesForUid(uid)?.toSet() ?: return false
         if (!packages.contains(FRIEND_PACKAGE)) return false
         return try {
-            val ownSignatures = signerSet(packageManager.getPackageInfo(packageName, PackageManager.GET_SIGNING_CERTIFICATES))
-            val friendSignatures = signerSet(packageManager.getPackageInfo(FRIEND_PACKAGE, PackageManager.GET_SIGNING_CERTIFICATES))
+            val ownSignatures = signerSet(signaturePackageInfo(packageName))
+            val friendSignatures = signerSet(signaturePackageInfo(FRIEND_PACKAGE))
             ownSignatures.isNotEmpty() && ownSignatures.intersect(friendSignatures).isNotEmpty()
         } catch (_: Exception) {
             false
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun signaturePackageInfo(name: String): PackageInfo {
+        val flag = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            PackageManager.GET_SIGNING_CERTIFICATES
+        } else {
+            PackageManager.GET_SIGNATURES
+        }
+        return packageManager.getPackageInfo(name, flag)
     }
 
     @Suppress("DEPRECATION")
@@ -143,10 +155,59 @@ class AiBridgeService : Service() {
             val item = array.optJSONObject(index) ?: return@mapNotNull null
             val role = item.optString("role")
             val text = item.optString("text").take(12000)
-            if ((role == "user" || role == "assistant") && text.isNotBlank()) ChatMessage(role, text) else null
-        }.takeLast(24)
+            val timestamp = item.optLong("timestamp", System.currentTimeMillis())
+            if ((role == "user" || role == "assistant") && text.isNotBlank()) ChatMessage(role, text, timestamp) else null
+        }.takeLast(150)
     } catch (_: Exception) {
         emptyList()
+    }
+
+    /** Save a mirrored Friend conversation inside AVai's encrypted on-device chat store. */
+    private fun persistFriendConversation(
+        friendChatId: String,
+        incoming: List<ChatMessage>,
+        answer: String,
+        provider: AIProvider,
+        model: String
+    ) {
+        if (!friendChatId.matches(Regex("^[A-Za-z0-9_-]{1,64}$"))) return
+        val sessionId = "friend_" + friendChatId
+        val previous = parseHistory(store.getString("chat_" + sessionId, "[]"))
+        val merged = (previous + incoming)
+            .distinctBy { "${it.timestamp}|${it.role}|${it.text}" }
+            .sortedBy { it.timestamp }
+            .takeLast(149)
+            .toMutableList()
+        merged.add(ChatMessage("assistant", answer))
+        val conversation = JSONArray()
+        merged.takeLast(150).forEach { item ->
+            conversation.put(JSONObject()
+                .put("role", item.role)
+                .put("text", item.text)
+                .put("timestamp", item.timestamp))
+        }
+        store.putString("chat_" + sessionId, conversation.toString())
+
+        val now = System.currentTimeMillis()
+        val firstUser = merged.firstOrNull { it.role == "user" }?.text
+            ?.replace("\n", " ")?.take(34)?.ifBlank { "Conversation" } ?: "Conversation"
+        val updatedSessions = JSONArray()
+        val existingSessions = JSONArray(store.getString("chat_sessions", "[]"))
+        for (index in 0 until existingSessions.length()) {
+            val item = existingSessions.optJSONObject(index) ?: continue
+            if (item.optString("id") != sessionId) updatedSessions.put(item)
+        }
+        updatedSessions.put(JSONObject()
+            .put("id", sessionId)
+            .put("title", "Friend · " + firstUser)
+            .put("updatedAt", now)
+            .put("provider", provider.name)
+            .put("model", model))
+        while (updatedSessions.length() > 100) {
+            // Oldest IDs are not guaranteed to be first in older JSON; UI sorts by updatedAt.
+            updatedSessions.remove(0)
+        }
+        store.putString("chat_sessions", updatedSessions.toString())
     }
 
     private fun reply(target: Messenger, result: String? = null, error: String? = null) {
