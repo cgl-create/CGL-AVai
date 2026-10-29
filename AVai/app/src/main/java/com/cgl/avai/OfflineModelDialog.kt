@@ -122,10 +122,26 @@ fun OfflineModelDialog(
                 } else {
                     Text(name.ifBlank { File(path).name }, fontSize = 13.sp)
                     Text("File size: " + formatBytes(size), fontSize = 11.sp)
+                    if (size > memory.availMem) {
+                        Text("Warning: this model file is larger than currently available RAM. Free memory first; runtime overhead may still prevent loading.", fontSize = 11.sp)
+                    }
                     Text("SHA-256: " + sha, fontSize = 10.sp)
                     Text("Stored privately at: " + File(path).parentFile?.name + "/" + File(path).name, fontSize = 10.sp)
                 }
                 Text(status, fontSize = 11.sp)
+                OutlinedButton(
+                    onClick = {
+                        try {
+                            context.startActivity(android.content.Intent(
+                                android.content.Intent.ACTION_VIEW,
+                                Uri.parse("https://huggingface.co/litert-community")
+                            ))
+                        } catch (_: Exception) {
+                            status = "Could not open the model catalogue. Visit huggingface.co/litert-community in a browser."
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Browse LiteRT model catalogue") }
                 Button(
                     onClick = { picker.launch(arrayOf("*/*")) },
                     enabled = !busy,
