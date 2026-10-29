@@ -7,6 +7,7 @@ object AiBridgeProtocol {
     const val MESSAGE_INFER = 701
     const val MESSAGE_RESULT = 702
     const val KEY_PROTOCOL_VERSION = "protocol_version"
+    const val KEY_CHAT_ID = "chat_id"
     const val KEY_PROMPT = "prompt"
     const val KEY_HISTORY_JSON = "history_json"
     const val KEY_TONE = "tone"
