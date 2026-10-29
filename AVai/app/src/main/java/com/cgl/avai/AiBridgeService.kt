@@ -53,11 +53,6 @@ class AiBridgeService : Service() {
                 reply(callback, error = "The calling app could not be verified. Reinstall AVai and Friend from the same signed build.")
                 return
             }
-            val grantAllowed = consumeOneRequestOrCheckPersistentGrant()
-            if (!grantAllowed) {
-                reply(callback, error = "Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
-                return
-            }
             if (input.getInt(AiBridgeProtocol.KEY_PROTOCOL_VERSION, 0) != 1) {
                 reply(callback, error = "Friend and AVai use incompatible bridge versions. Update both apps together.")
                 return
@@ -65,6 +60,11 @@ class AiBridgeService : Service() {
             val prompt = input.getString(AiBridgeProtocol.KEY_PROMPT).orEmpty().take(12000)
             if (prompt.isBlank()) {
                 reply(callback, error = "The message was empty.")
+                return
+            }
+            val grantAllowed = consumeOneRequestOrCheckPersistentGrant()
+            if (!grantAllowed) {
+                reply(callback, error = "Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
                 return
             }
             val history = parseHistory(input.getString(AiBridgeProtocol.KEY_HISTORY_JSON).orEmpty())
@@ -76,10 +76,16 @@ class AiBridgeService : Service() {
                 try {
                     val provider = AIProvider.fromStored(store.getString("provider", AIProvider.GEMINI.name))
                     val activeProfileId = store.getString("active_profile_" + provider.name)
-                    val key = (if (activeProfileId.isNotBlank()) store.getString("profile_key_" + activeProfileId) else "")
-                        .ifBlank { store.getString("key_" + provider.name) }
-                        .ifBlank { store.getString(provider.keyName) }
-                    if (key.isBlank()) throw IllegalStateException("Open AVai → Settings and add an API key for the selected provider.")
+                    val key = if (provider == AIProvider.LOCAL) "" else
+                        (if (activeProfileId.isNotBlank()) store.getString("profile_key_" + activeProfileId) else "")
+                            .ifBlank { store.getString("key_" + provider.name) }
+                            .ifBlank { store.getString(provider.keyName) }
+                    if (provider != AIProvider.LOCAL && key.isBlank()) {
+                        throw IllegalStateException("Open AVai → Settings and add an API key for the selected provider.")
+                    }
+                    if (provider == AIProvider.LOCAL && store.getString("local_model_path").isBlank()) {
+                        throw IllegalStateException("Choose a .litertlm offline model in AVai → Settings before asking Friend.")
+                    }
                     val model = store.getString("model_" + provider.name)
                         .ifBlank { store.getString("model", provider.defaultModel) }
                         .ifBlank { provider.defaultModel }
@@ -87,7 +93,10 @@ class AiBridgeService : Service() {
                         .filter { it.isNotBlank() }
                         .joinToString("\n\n")
                         .take(8000)
-                    val answer = AiClient.reply(provider, key, model, tone, memory, imported, history)
+                    val answer = AiClient.reply(
+                        provider, key, model, tone, memory, imported, history,
+                        localModelPath = store.getString("local_model_path")
+                    )
                     reply(callback, result = answer)
                 } catch (error: Exception) {
                     reply(callback, error = error.message ?: "AVai could not complete the request.")
