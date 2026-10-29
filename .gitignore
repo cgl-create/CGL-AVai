@@ -1,0 +1,16 @@
+# Android / Gradle
+**/.gradle/
+**/build/
+local.properties
+*.iml
+
+# Firebase client config is generated per registered Android app.
+# Supply the actual files locally or via the optional Actions secrets documented in FIREBASE_SETUP.md.
+**/google-services.json
+
+# Signing keys and credentials must never be committed.
+*.jks
+*.keystore
+*.p12
+*.pem
+*.key
