@@ -1,6 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET" />
+    <permission
+        android:name="com.cgl.avai.permission.USE_AI"
+        android:description="@string/permission_friend_ai"
+        android:protectionLevel="signature" />
     <application
         android:allowBackup="false"
         android:label="AVai by CGL+"
@@ -20,5 +24,9 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+        <service
+            android:name=".AiBridgeService"
+            android:exported="true"
+            android:permission="com.cgl.avai.permission.USE_AI" />
     </application>
 </manifest>
