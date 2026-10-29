@@ -122,7 +122,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             providerName = providerName,
             model = model
         )
-        sessions = (sessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
+        val savedSessions = loadSessions(store.getString("chat_sessions", "[]"))
+        sessions = (savedSessions.filterNot { it.id == activeChatId } + updated).sortedByDescending { it.updatedAt }
         writeSessions()
         store.putString("active_chat", activeChatId)
     }
@@ -133,7 +134,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         chats = emptyList()
         prompt = ""
         val item = ChatSession(activeChatId, "New chat", System.currentTimeMillis(), providerName, model)
-        sessions = (listOf(item) + sessions.filterNot { it.id == item.id }).sortedByDescending { it.updatedAt }
+        val savedSessions = loadSessions(store.getString("chat_sessions", "[]"))
+        sessions = (listOf(item) + savedSessions.filterNot { it.id == item.id }).sortedByDescending { it.updatedAt }
         store.putString("active_chat", activeChatId)
         writeSessions()
         status = "New conversation started"
@@ -156,7 +158,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
 
     fun deleteChat(item: ChatSession) {
         store.remove("chat_" + item.id)
-        sessions = sessions.filterNot { it.id == item.id }
+        sessions = loadSessions(store.getString("chat_sessions", "[]")).filterNot { it.id == item.id }
         writeSessions()
         if (item.id == activeChatId) {
             activeChatId = UUID.randomUUID().toString()
@@ -263,7 +265,10 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                 Text("AVai", color = Paper, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text("CGL+ AI Workspace", color = Muted, fontSize = 12.sp)
             }
-            TextButton(onClick = { historyOpen = true }) { Text("History", color = Gold) }
+            TextButton(onClick = {
+                sessions = loadSessions(store.getString("chat_sessions", "[]"))
+                historyOpen = true
+            }) { Text("History", color = Gold) }
             TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = Gold) }
         }
         Spacer(Modifier.height(14.dp))
