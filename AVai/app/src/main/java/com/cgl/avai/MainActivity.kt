@@ -55,6 +55,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     var model by remember { mutableStateOf(store.getString("model_" + providerName, AIProvider.fromStored(providerName).defaultModel)) }
     var prompt by remember { mutableStateOf("") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var accountOpen by remember { mutableStateOf(false) }
+    var accountLabel by remember { mutableStateOf("Account") }
     var historyOpen by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Your AI workspace · keys stay on this device") }
@@ -171,28 +173,46 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
 
     if (showConsent) {
         AlertDialog(
-            onDismissRequest = { showConsent = false; consentAnswer = "Friend access not granted" },
+            onDismissRequest = {
+                store.putString("friend_access_once_until", "0")
+                showConsent = false
+                consentAnswer = "No access was granted."
+                status = consentAnswer
+            },
             title = { Text("Friend wants to use AVai") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Allow Friend to use AVai with your AI configurations and connections?")
-                    Text("This first build only shows the consent UI; the secure AI hand-off is not connected yet. Allowing here does not share API keys.", color = Muted, fontSize = 12.sp)
+                    Text("AVai will send your messages to the provider selected here. Your API keys stay inside AVai and are never given to Friend.", color = Muted, fontSize = 12.sp)
                     if (consentAnswer.isNotBlank()) Text(consentAnswer, color = Gold)
                 }
             },
             confirmButton = {
                 TextButton(onClick = {
-                    consentAnswer = "Choice recorded for this screen only; bridge not active."
+                    store.putString("friend_access_always", "true")
+                    store.putString("friend_access_once_until", "0")
+                    consentAnswer = "Friend is always allowed. Revoke this in AVai Settings."
                     showConsent = false
                     status = consentAnswer
-                }) { Text("Allow") }
+                }) { Text("Always allow") }
             },
             dismissButton = {
-                TextButton(onClick = {
-                    consentAnswer = "Friend access denied"
-                    showConsent = false
-                    status = consentAnswer
-                }) { Text("Deny") }
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    TextButton(onClick = {
+                        store.putString("friend_access_always", "false")
+                        store.putString("friend_access_once_until", (System.currentTimeMillis() + 300_000L).toString())
+                        consentAnswer = "Friend may make one AI request."
+                        showConsent = false
+                        status = consentAnswer
+                    }) { Text("Allow once") }
+                    TextButton(onClick = {
+                        store.putString("friend_access_always", "false")
+                        store.putString("friend_access_once_until", "0")
+                        consentAnswer = "Friend access denied."
+                        showConsent = false
+                        status = consentAnswer
+                    }) { Text("Deny") }
+                }
             }
         )
     }
@@ -206,6 +226,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                 Text("AVai", color = Paper, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text("CGL+ AI Workspace", color = Muted, fontSize = 12.sp)
             }
+            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
             TextButton(onClick = { historyOpen = true }) { Text("History", color = Gold) }
             TextButton(onClick = { settingsOpen = true }) { Text("Settings", color = Gold) }
         }
@@ -293,7 +314,22 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                     OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text("API key (blank keeps saved key)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     OutlinedTextField(value = modelInput, onValueChange = { modelInput = it }, label = { Text("Model ID") }, singleLine = true)
                     OutlinedTextField(value = memoryInput, onValueChange = { memoryInput = it }, label = { Text("Your AI memory notes") }, minLines = 2)
-                    Text("Local/offline LLM downloads and CGL+ Accounts sign-in are not active yet.", color = Muted, fontSize = 11.sp)
+                    Text("Offline model runtime is not installed yet. CGL+ Accounts needs this app registered in Firebase and its real google-services.json.", color = Muted, fontSize = 11.sp)
+                    Divider(color = Color(0xFF383832))
+                    Text(
+                        "Friend access: " + when {
+                            store.getString("friend_access_always") == "true" -> "Always allowed"
+                            (store.getString("friend_access_once_until").toLongOrNull() ?: 0L) > System.currentTimeMillis() -> "One-time grant pending"
+                            else -> "Not allowed"
+                        },
+                        color = Muted, fontSize = 12.sp
+                    )
+                    TextButton(onClick = {
+                        store.putString("friend_access_always", "false")
+                        store.putString("friend_access_once_until", "0")
+                        status = "Friend access revoked"
+                        settingsOpen = false
+                    }) { Text("Revoke Friend access", color = Gold) }
                 }
             },
             confirmButton = {
@@ -313,6 +349,14 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             }
         )
     }
+    if (accountOpen) {
+        CglAccountsDialog(
+            onDismiss = { accountOpen = false },
+            onStatus = { status = it },
+            onAccountChanged = { accountLabel = if (it == "Sign in") "Account" else it }
+        )
+    }
+
     if (historyOpen) {
         AlertDialog(
             onDismissRequest = { historyOpen = false },
