@@ -188,9 +188,17 @@ fun OfflineModelDialog(
                 ) { Text("Browse LiteRT model catalogue") }
                 Button(
                     onClick = { picker.launch(arrayOf("*/*")) },
-                    enabled = !busy,
+                    enabled = !busy && installedModels.size < 20,
                     modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "Importing…" else "Import .litertlm file") }
+                ) {
+                    Text(
+                        when {
+                            busy -> "Importing…"
+                            installedModels.size >= 20 -> "Model limit reached (20)"
+                            else -> "Import .litertlm file"
+                        }
+                    )
+                }
                 if (path.isNotBlank()) {
                     OutlinedButton(
                         onClick = { onUseModel(); onDismiss() },
