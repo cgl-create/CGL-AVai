@@ -465,7 +465,8 @@ private fun FriendApp(activity: MainActivity) {
                         tone = tone,
                         memory = memoryNotes,
                         importedHistory = importedHistory,
-                        history = messages.toList()
+                        history = messages.toList(),
+                        chatId = activeChatId
                     )
                 } else {
                     AiClient.reply(
