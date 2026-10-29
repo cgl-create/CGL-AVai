@@ -56,6 +56,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     var apiProfiles by remember { mutableStateOf(loadApiProfiles(store.getString("api_profiles", "[]"))) }
     var prompt by remember { mutableStateOf("") }
     var settingsOpen by remember { mutableStateOf(false) }
+    var localModelOpen by remember { mutableStateOf(false) }
     var accountOpen by remember { mutableStateOf(false) }
     var accountLabel by remember { mutableStateOf("Account") }
     var historyOpen by remember { mutableStateOf(false) }
@@ -168,8 +169,13 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     fun send() {
         val text = prompt.trim()
         if (text.isEmpty() || busy) return
-        val key = selectedApiKey(provider)
-        if (key.isBlank()) {
+        val key = if (provider == AIProvider.LOCAL) "" else selectedApiKey(provider)
+        if (provider == AIProvider.LOCAL && store.getString("local_model_path").isBlank()) {
+            status = "Import a .litertlm file before using the offline model."
+            localModelOpen = true
+            return
+        }
+        if (provider != AIProvider.LOCAL && key.isBlank()) {
             status = "Connect ${provider.label} before chatting."
             settingsOpen = true
             return
@@ -183,7 +189,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             try {
                 val answer = AiClient.reply(
                     provider, key, model, "clear, calm and helpful",
-                    store.getString("memory"), "", chats.takeLast(24)
+                    store.getString("memory"), "", chats.takeLast(24),
+                    localModelPath = store.getString("local_model_path")
                 )
                 chats = chats + ChatMessage("assistant", answer)
                 status = "Connected to ${provider.label}"
@@ -275,12 +282,20 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                     }
                 }
             }
-            OutlinedTextField(
-                value = model, onValueChange = {
-                    model = it
-                    store.putString("model_" + provider.name, it)
-                }, modifier = Modifier.weight(1f), label = { Text("Model ID") }, singleLine = true
-            )
+            if (provider == AIProvider.LOCAL) {
+                Column(Modifier.weight(1f)) {
+                    Text("ON-DEVICE", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                    Text(store.getString("local_model_name", "No offline model imported"), color = Muted, fontSize = 11.sp, maxLines = 2)
+                }
+                TextButton(onClick = { localModelOpen = true }) { Text("Model", color = Gold) }
+            } else {
+                OutlinedTextField(
+                    value = model, onValueChange = {
+                        model = it
+                        store.putString("model_" + provider.name, it)
+                    }, modifier = Modifier.weight(1f), label = { Text("Model ID") }, singleLine = true
+                )
+            }
         }
         Text(status, color = Muted, fontSize = 12.sp, modifier = Modifier.padding(vertical = 8.dp))
         LazyColumn(Modifier.weight(1f).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -342,12 +357,18 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                             Column {
                                 Text(item.label)
                                 Text(
-                                    if (apiProfiles.any { it.provider == item } || store.getString("key_" + item.name).isNotBlank() || store.getString(item.keyName).isNotBlank()) "Configured on this device" else "Not connected",
+                                    when {
+                                        item == AIProvider.LOCAL && store.getString("local_model_path").isNotBlank() -> "Offline model imported"
+                                        item == AIProvider.LOCAL -> "No API key required"
+                                        apiProfiles.any { it.provider == item } || store.getString("key_" + item.name).isNotBlank() || store.getString(item.keyName).isNotBlank() -> "Configured on this device"
+                                        else -> "Not connected"
+                                    },
                                     color = Muted, fontSize = 11.sp
                                 )
                             }
                         }
                     }
+                    if (AIProvider.fromStored(chosen) != AIProvider.LOCAL) {
                     Text("Saved key profiles for " + AIProvider.fromStored(chosen).label, color = Gold, fontSize = 12.sp)
                     val savedProfiles = apiProfiles.filter { it.provider.name == chosen }
                     if (savedProfiles.isEmpty()) {
@@ -385,8 +406,12 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                     )
                     OutlinedTextField(value = keyInput, onValueChange = { keyInput = it }, label = { Text("API key for this profile (blank keeps it)") }, visualTransformation = PasswordVisualTransformation(), singleLine = true)
                     OutlinedTextField(value = modelInput, onValueChange = { modelInput = it }, label = { Text("Model ID") }, singleLine = true)
+                    } else {
+                        Text("Offline inference runs entirely on this device. Import a .litertlm model file; no API key is needed.", color = Muted, fontSize = 11.sp)
+                        Button(onClick = { settingsOpen = false; localModelOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Manage offline model") }
+                    }
                     OutlinedTextField(value = memoryInput, onValueChange = { memoryInput = it }, label = { Text("Your AI memory notes") }, minLines = 2)
-                    Text("Offline model runtime is not installed yet. CGL+ Accounts needs this app registered in Firebase and its real google-services.json.", color = Muted, fontSize = 11.sp)
+                    Text("CGL+ Accounts needs this app registered in Firebase and its real google-services.json.", color = Muted, fontSize = 11.sp)
                     Divider(color = Color(0xFF383832))
                     Text(
                         "Friend access: " + when {
@@ -407,10 +432,26 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             confirmButton = {
                 TextButton(onClick = {
                     providerName = chosen
-                    model = modelInput.trim().ifBlank { AIProvider.fromStored(chosen).defaultModel }
-                    if (keyInput.isNotBlank()) store.putString("key_" + chosen, keyInput.trim())
-                    store.putString("model_" + chosen, model)
+                    val selected = AIProvider.fromStored(chosen)
+                    if (selected == AIProvider.LOCAL) {
+                        model = selected.defaultModel
+                        store.putString("model_" + selected.name, model)
+                    } else {
+                        model = modelInput.trim().ifBlank { selected.defaultModel }
+                        if (keyInput.isNotBlank()) {
+                            val existing = apiProfiles.firstOrNull { it.id == selectedKeyProfileId && it.provider == selected }
+                            val profile = if (existing != null) existing.copy(name = profileNameInput.trim().ifBlank { existing.name })
+                                else ApiKeyProfile(UUID.randomUUID().toString(), profileNameInput.trim().ifBlank { "Profile" }, selected)
+                            store.putString("profile_key_" + profile.id, keyInput.trim())
+                            apiProfiles = (apiProfiles.filterNot { it.id == profile.id } + profile)
+                            saveApiProfiles()
+                            selectedKeyProfileId = profile.id
+                            store.putString("active_profile_" + selected.name, profile.id)
+                        }
+                        store.putString("model_" + selected.name, model)
+                    }
                     store.putString("provider", providerName)
+                    store.putString("model", model)
                     store.putString("memory", memoryInput.take(8000))
                     settingsOpen = false
                     status = "Settings saved on this device"
@@ -421,6 +462,22 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             }
         )
     }
+    if (localModelOpen) {
+        OfflineModelDialog(
+            store = store,
+            onDismiss = { localModelOpen = false },
+            onUseModel = {
+                providerName = AIProvider.LOCAL.name
+                model = AIProvider.LOCAL.defaultModel
+                store.putString("provider", providerName)
+                store.putString("model_" + providerName, model)
+                store.putString("model", model)
+                status = "Offline model selected · messages stay on-device"
+            },
+            onStatus = { status = it }
+        )
+    }
+
     if (accountOpen) {
         CglAccountsDialog(
             onDismiss = { accountOpen = false },
