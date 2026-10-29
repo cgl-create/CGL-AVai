@@ -24,6 +24,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -1014,7 +1016,7 @@ private fun SettingsDialog(
         title = { Text("Friend settings", color = WarmWhite, fontWeight = FontWeight.Bold) },
         text = {
             Column(
-                modifier = Modifier.fillMaxWidth().height(480.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(max = 520.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text("AI provider", color = Quiet, fontSize = 12.sp)
@@ -1036,30 +1038,37 @@ private fun SettingsDialog(
                         }
                     }
                 }
-                Text(
-                    if (storedKeys[selectedProvider].orEmpty().isNotBlank()) "A key is saved encrypted on this device. Paste another to replace it." else "No key is saved for this provider yet.",
-                    color = Quiet, fontSize = 11.sp, lineHeight = 15.sp
-                )
-                OutlinedTextField(
-                    value = newKey,
-                    onValueChange = { newKey = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("API key (optional until you save)") },
-                    placeholder = { Text("Paste your own key") },
-                    visualTransformation = PasswordVisualTransformation(),
-                    singleLine = true
-                )
-                OutlinedButton(
-                    onClick = { onClearKey(selectedProvider); newKey = "" },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Delete saved " + selectedProvider.label + " key", fontSize = 11.sp) }
-                OutlinedTextField(
-                    value = model,
-                    onValueChange = { model = it },
-                    modifier = Modifier.fillMaxWidth(),
-                    label = { Text("Model name") },
-                    singleLine = true
-                )
+                if (selectedProvider == AIProvider.LOCAL) {
+                    Text(
+                        "Friend will ask AVai to run its imported .litertlm model on-device. The local model must be configured in AVai first; no API key is needed.",
+                        color = Quiet, fontSize = 11.sp, lineHeight = 15.sp
+                    )
+                } else {
+                    Text(
+                        if (storedKeys[selectedProvider].orEmpty().isNotBlank()) "A key is saved encrypted on this device. Paste another to replace it." else "No key is saved for this provider yet.",
+                        color = Quiet, fontSize = 11.sp, lineHeight = 15.sp
+                    )
+                    OutlinedTextField(
+                        value = newKey,
+                        onValueChange = { newKey = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("API key (optional until you save)") },
+                        placeholder = { Text("Paste your own key") },
+                        visualTransformation = PasswordVisualTransformation(),
+                        singleLine = true
+                    )
+                    OutlinedButton(
+                        onClick = { onClearKey(selectedProvider); newKey = "" },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Delete saved " + selectedProvider.label + " key", fontSize = 11.sp) }
+                    OutlinedTextField(
+                        value = model,
+                        onValueChange = { model = it },
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Model name (per chat)") },
+                        singleLine = true
+                    )
+                }
                 Divider(color = Border)
                 Text("Device speaking voice", color = Quiet, fontSize = 12.sp)
                 Box {
