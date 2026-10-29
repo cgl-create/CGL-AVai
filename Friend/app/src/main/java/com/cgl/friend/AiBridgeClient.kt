@@ -35,6 +35,7 @@ object AiBridgeClient {
             val completed = AtomicBoolean(false)
             var bound = false
             var connectedMessenger: Messenger? = null
+            lateinit var connection: ServiceConnection
 
             fun finish(result: String? = null, error: String? = null) {
                 if (!completed.compareAndSet(false, true)) return
@@ -56,7 +57,7 @@ object AiBridgeClient {
                 true
             })
 
-            val connection = object : ServiceConnection {
+            connection = object : ServiceConnection {
                 override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
                     if (binder == null) {
                         finish(error = "AVai's AI service did not start.")
