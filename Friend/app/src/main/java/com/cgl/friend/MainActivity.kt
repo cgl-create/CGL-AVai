@@ -652,7 +652,7 @@ private fun FriendApp(activity: MainActivity) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                FriendAvatar(state = avatarState, size = if (desktopWindow) 154.dp else 190.dp)
+                FriendAvatar(state = avatarState, avatarSize = if (desktopWindow) 154.dp else 190.dp)
                 Text(
                     when (avatarState) {
                         "listening" -> "I'm listening."
