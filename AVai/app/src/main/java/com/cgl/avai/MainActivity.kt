@@ -1,6 +1,5 @@
 package com.cgl.avai
 
-import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -53,14 +52,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     val scope = rememberCoroutineScope()
-    var providerName by remember { mutableStateOf(store.getString("provider", AIProvider.GEMINI.name)) }
+    var providerName by remember { mutableStateOf(store.getString("provider", AIProvider.LOCAL.name)) }
     var model by remember { mutableStateOf(store.getString("model_" + providerName, AIProvider.fromStored(providerName).defaultModel)) }
     var apiProfiles by remember { mutableStateOf(loadApiProfiles(store.getString("api_profiles", "[]"))) }
     var prompt by remember { mutableStateOf("") }
     var settingsOpen by remember { mutableStateOf(false) }
     var localModelOpen by remember { mutableStateOf(false) }
-    var accountOpen by remember { mutableStateOf(false) }
-    var accountLabel by remember { mutableStateOf("Account") }
     var historyOpen by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf("Your AI workspace · keys stay on this device") }
@@ -309,7 +306,7 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             if (chats.isEmpty()) item {
                 Column(Modifier.fillMaxWidth().padding(top = 62.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("Your AI. Your choice.", color = Paper, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
-                    Text("Connect a provider, then start chatting.", color = Muted)
+                    Text("Import a local language model for CGL+ AI, or select a connected provider in Settings.", color = Muted)
                 }
             }
             items(chats) { message ->
@@ -334,7 +331,6 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
             TextButton(onClick = { startNewChat() }) { Text("New chat", color = Gold) }
-            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
             TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
         }
     }
@@ -420,7 +416,6 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                         Button(onClick = { settingsOpen = false; localModelOpen = true }, modifier = Modifier.fillMaxWidth()) { Text("Manage offline model") }
                     }
                     OutlinedTextField(value = memoryInput, onValueChange = { memoryInput = it }, label = { Text("Your AI memory notes") }, minLines = 2)
-                    Text("CGL+ Accounts needs this app registered in Firebase and its real google-services.json.", color = Muted, fontSize = 11.sp)
                     Divider(color = Color(0xFF383832))
                     Text(
                         "Friend access: " + when {
@@ -487,13 +482,6 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         )
     }
 
-    if (accountOpen) {
-        CglAccountsDialog(
-            onDismiss = { accountOpen = false },
-            onStatus = { status = it },
-            onAccountChanged = { accountLabel = if (it == "Sign in") "Account" else it }
-        )
-    }
 
     if (historyOpen) {
         AlertDialog(

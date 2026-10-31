@@ -120,14 +120,14 @@ fun OfflineModelDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("Offline model (on-device)") },
+        title = { Text("CGL+ AI · On-device language model") },
         text = {
             Column(
                 modifier = Modifier.heightIn(max = 560.dp).verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    "Import a .litertlm model file you have downloaded from a model publisher you trust. AVai runs it locally with LiteRT-LM on the CPU; the model is not sent to an AI provider.",
+                    "CGL+ AI provides the assistant architecture, identity, context and memory handling. This .litertlm file supplies language generation only. Import a compatible model from a publisher you trust; AVai runs it locally with LiteRT-LM, and the model file is not sent to an AI provider. These weights are not currently bundled or claimed as CGL+-trained.",
                     fontSize = 12.sp
                 )
                 val totalGb = memory.totalMem / (1024.0 * 1024.0 * 1024.0)

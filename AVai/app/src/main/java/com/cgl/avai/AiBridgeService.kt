@@ -72,7 +72,7 @@ class AiBridgeService : Service() {
                 try {
                     val requestedProvider = input.getString(AiBridgeProtocol.KEY_PROVIDER).orEmpty()
                     val provider = if (requestedProvider.isBlank()) {
-                        AIProvider.fromStored(store.getString("provider", AIProvider.GEMINI.name))
+                        AIProvider.fromStored(store.getString("provider", AIProvider.LOCAL.name))
                     } else {
                         AIProvider.fromStored(requestedProvider)
                     }

@@ -306,8 +306,6 @@ private fun FriendApp(activity: MainActivity) {
     var thinking by remember { mutableStateOf(false) }
     var notice by remember { mutableStateOf("Ready when you are") }
     var settingsOpen by remember { mutableStateOf(false) }
-    var accountOpen by remember { mutableStateOf(false) }
-    var accountLabel by remember { mutableStateOf("Account") }
     var useAvai by remember { mutableStateOf(store.getString("use_avai", "true") == "true") }
     var chatListOpen by remember { mutableStateOf(false) }
     var activeChatId by remember { mutableStateOf(store.getString("active_chat_id", "main")) }
@@ -601,7 +599,6 @@ private fun FriendApp(activity: MainActivity) {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            TextButton(onClick = { accountOpen = true }) { Text(accountLabel.take(12), color = Gold, fontSize = 11.sp) }
             TextButton(onClick = {
                 useAvai = !useAvai
                 store.putString("use_avai", useAvai.toString())
@@ -801,13 +798,6 @@ private fun FriendApp(activity: MainActivity) {
         )
     }
 
-    if (accountOpen) {
-        CglAccountsDialog(
-            onDismiss = { accountOpen = false },
-            onStatus = { notice = it },
-            onAccountChanged = { accountLabel = if (it == "Sign in") "Account" else it }
-        )
-    }
 
     if (settingsOpen) {
         SettingsDialog(

@@ -19,14 +19,10 @@ jobs:
           distribution: temurin
           java-version: "17"
       - uses: android-actions/setup-android@v4
-      - name: Restore optional Firebase configuration and debug keystore
+      - name: Restore optional shared debug keystore
         env:
-          FRIEND_CONFIG_B64: ${{ secrets.FRIEND_GOOGLE_SERVICES_JSON_BASE64 }}
           DEBUG_KEYSTORE_B64: ${{ secrets.CGLPLUS_ANDROID_DEBUG_KEYSTORE_BASE64 }}
         run: |
-          if [ -n "$FRIEND_CONFIG_B64" ]; then
-            printf '%s' "$FRIEND_CONFIG_B64" | base64 --decode > Friend/app/google-services.json
-          fi
           if [ -n "$DEBUG_KEYSTORE_B64" ]; then
             mkdir -p "$HOME/.android"
             printf '%s' "$DEBUG_KEYSTORE_B64" | base64 --decode > "$HOME/.android/debug.keystore"
