@@ -11,9 +11,9 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 enum class AIProvider(val label: String, val keyName: String, val defaultModel: String) {
-    GEMINI("Google Gemini", "api_key_gemini", "gemini-3.8-flash"),
-    OPENAI("OpenAI API", "api_key_openai", "gpt-6-astra"),
-    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-5"),
+    GEMINI("Google Gemini", "api_key_gemini", "gemini-2.5-flash"),
+    OPENAI("OpenAI API", "api_key_openai", "gpt-4.1-mini"),
+    CLAUDE("Anthropic Claude", "api_key_claude", "claude-sonnet-4-5"),
     LOCAL("Offline on-device model", "", "local");
 
     companion object {
