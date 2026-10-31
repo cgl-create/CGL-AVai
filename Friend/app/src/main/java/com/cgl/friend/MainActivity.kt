@@ -891,7 +891,7 @@ private fun FriendApp(activity: MainActivity) {
 }
 
 @Composable
-private fun FriendAvatar(state: String, size: Dp = 190.dp) {
+private fun FriendAvatar(state: String, avatarSize: Dp = 190.dp) {
     val transition = rememberInfiniteTransition(label = "friend-features")
     val floatY by transition.animateFloat(
         initialValue = -3f,
@@ -925,7 +925,7 @@ private fun FriendAvatar(state: String, size: Dp = 190.dp) {
     val speaking = state == "speaking"
     val thinking = state == "thinking"
 
-    Canvas(Modifier.size(size)) {
+    Canvas(Modifier.size(avatarSize)) {
         val cx = size.width / 2f
         val baseY = size.height / 2f + floatY * (size.minDimension / 160f)
         val unit = size.minDimension / 160f
