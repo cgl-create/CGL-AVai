@@ -21,7 +21,7 @@ This is inspired by AHi1's separation of identity, knowledge, memory and communi
 
 Friend is configured for resizable ChromeOS app windows and does not require a touchscreen or microphone. Its content width adapts to wide Chromebook windows, and keyboard shortcuts are available: **Ctrl+Enter** sends the current message and **Ctrl+N** starts a new chat. Typing remains available when microphone hardware or speech recognition is unavailable.
 
-The Chromebook must support Android apps / Google Play. When using AVai's local LiteRT-LM engine, compatible CPU architecture and model/runtime binaries are required. Use a cloud provider in AVai if a local model cannot run on that Chromebook.
+The Chromebook must support Android apps / Google Play. AVai local LiteRT-LM inference currently supports ARM64 (`arm64-v8a`) and x86-64 (`x86_64`) CPU architectures. Use a cloud provider in AVai on other CPU architectures.
 
 ## No accounts or sign-in
 

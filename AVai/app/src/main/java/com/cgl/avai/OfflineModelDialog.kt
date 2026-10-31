@@ -137,7 +137,11 @@ fun OfflineModelDialog(
                     fontSize = 11.sp
                 )
                 Text(
-                    "Runtime memory can be much larger than the model file. Check the model card for recommended RAM, license, and supported devices. Large models may run slowly or overheat a phone.",
+                    "Runtime memory can be much larger than the model file. Check the model card for recommended RAM, license, and supported devices. Large models may run slowly or overheat a device.",
+                    fontSize = 11.sp
+                )
+                Text(
+                    "Local LiteRT-LM currently requires a 64-bit ARM64 or x86_64 Android CPU. Cloud-provider mode remains available on other CPU architectures.",
                     fontSize = 11.sp
                 )
                 if (path.isBlank()) {

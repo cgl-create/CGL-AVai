@@ -36,7 +36,7 @@ AVai and Friend are configured as resizable Android apps for ChromeOS:
 - Keyboard shortcuts: **Ctrl+Enter** sends a message and **Ctrl+N** starts a new chat in AVai and Friend.
 - Friend microphone hardware is optional; typing remains available when a microphone or speech-recognition service is unavailable.
 
-Install them on a Chromebook only when that device supports Google Play / Android apps. Local LiteRT-LM inference also depends on a compatible Android CPU ABI and model/runtime binaries. Cloud-provider mode is the alternative where a local model cannot load. ChromeOS compatibility does not guarantee that every imported model will perform well.
+Install them on a Chromebook only when that device supports Google Play / Android apps. The built AVai APK contains LiteRT-LM JNI libraries for **ARM64 (`arm64-v8a`) and x86-64 (`x86_64`)**; 32-bit ARM/x86 devices can use the app interface and cloud-provider mode but cannot run AVai local inference. Model format, memory and performance still need to match the device.
 
 ## No accounts or sign-in
 

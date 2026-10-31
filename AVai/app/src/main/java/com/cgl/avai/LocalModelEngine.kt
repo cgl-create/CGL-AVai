@@ -9,6 +9,7 @@ import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import android.os.Build
 import java.io.File
 import java.util.concurrent.Executors
 
@@ -63,6 +64,11 @@ object LocalModelEngine {
     }
 
     private fun ensureLoaded(path: String) {
+        val supportedAbis = Build.SUPPORTED_ABIS.toSet()
+        require("arm64-v8a" in supportedAbis || "x86_64" in supportedAbis) {
+            "On-device CGL+ AI currently requires a 64-bit ARM64 or x86_64 Android CPU. " +
+                "This Chromebook can still use AVai and Friend with a connected cloud provider."
+        }
         if (loadedPath == path && engine != null) return
         releaseEngine()
         val cacheDirectory = File(File(path).parentFile, "litert-cache").apply { mkdirs() }

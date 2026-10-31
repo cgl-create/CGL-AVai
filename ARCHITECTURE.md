@@ -36,7 +36,7 @@ There is no copied four-region simulation or simulated connectome. This cognitiv
 
 Both Android activities are explicitly resizable, do not require a touchscreen, handle common window/orientation/keyboard configuration changes, and provide Ctrl+Enter / Ctrl+N shortcuts. Compose layouts constrain their maximum desktop width while filling smaller windows. Friend microphone hardware is optional.
 
-ChromeOS installation depends on the device supporting Android apps / Google Play. Local LiteRT-LM inference additionally requires a native runtime compatible with the Chromebook's Android ABI and an appropriate model. Cloud-provider mode is available when local inference is incompatible. Test real ARM and x86_64 Chromebook hardware before making a blanket compatibility claim.
+ChromeOS installation depends on the device supporting Android apps / Google Play. The current AVai APK contains LiteRT-LM JNI libraries for ARM64 (`arm64-v8a`) and x86-64 (`x86_64`). On other CPU architectures, the app UI and cloud-provider route remain available, but local LiteRT-LM inference is disabled with an explanatory error. Model format, RAM and performance still require real-device testing.
 
 ## Data and security boundaries
 
