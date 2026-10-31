@@ -17,6 +17,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -255,7 +261,24 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
         )
     }
 
-    Column(Modifier.fillMaxSize().background(Ink).padding(16.dp)) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
+        val desktopWindow = maxWidth >= 840.dp
+        Column(
+            Modifier.fillMaxWidth()
+                .widthIn(max = if (desktopWindow) 1180.dp else 840.dp)
+                .fillMaxHeight()
+                .align(Alignment.TopCenter)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown || !event.isCtrlPressed) {
+                        false
+                    } else when (event.key) {
+                        Key.Enter -> { send(); true }
+                        Key.N -> { startNewChat(); true }
+                        else -> false
+                    }
+                }
+                .padding(if (desktopWindow) 24.dp else 16.dp)
+        ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             Box(Modifier.size(44.dp).background(Gold, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
                 Text("A", color = Ink, fontSize = 26.sp, fontWeight = FontWeight.Black)
@@ -329,9 +352,14 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                 Text(if (busy) "…" else "Send")
             }
         }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-            TextButton(onClick = { startNewChat() }) { Text("New chat", color = Gold) }
-            TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+            if (desktopWindow) Text("Ctrl+Enter  Send     Ctrl+N  New chat", color = Muted, fontSize = 11.sp)
+            else Spacer(Modifier.width(1.dp))
+            Row(horizontalArrangement = Arrangement.End) {
+                TextButton(onClick = { startNewChat() }) { Text("New chat", color = Gold) }
+                TextButton(onClick = { settingsOpen = true }) { Text("Memory & AI", color = Gold) }
+            }
+        }
         }
     }
 

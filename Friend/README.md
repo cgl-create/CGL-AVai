@@ -17,6 +17,12 @@ Friend uses the same CGL+ AI orchestration design as AVai: identity and policy, 
 
 This is inspired by AHi1's separation of identity, knowledge, memory and communication. It does **not** copy AHi1's four-region neural simulation. The custom orchestration is not itself a trained language model. By default, AVai runs an imported LiteRT-LM model or the user's selected provider connection.
 
+## Chromebook / ChromeOS support
+
+Friend is configured for resizable ChromeOS app windows and does not require a touchscreen or microphone. Its content width adapts to wide Chromebook windows, and keyboard shortcuts are available: **Ctrl+Enter** sends the current message and **Ctrl+N** starts a new chat. Typing remains available when microphone hardware or speech recognition is unavailable.
+
+The Chromebook must support Android apps / Google Play. When using AVai's local LiteRT-LM engine, compatible CPU architecture and model/runtime binaries are required. Use a cloud provider in AVai if a local model cannot run on that Chromebook.
+
 ## No accounts or sign-in
 
 Friend does not use Firebase Authentication, Google sign-in, email/password sign-in, registration or CGL+ Accounts. The app opens directly. Chats, memory and imported excerpts are stored locally.

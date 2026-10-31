@@ -32,6 +32,12 @@ There is no copied four-region simulation or simulated connectome. This cognitiv
 - Signature-protected Messenger service verifies caller UID/package/signing certificate.
 - No Firebase Authentication, Google sign-in, email/password sign-in, registration or CGL+ Accounts dependency.
 
+## ChromeOS support
+
+Both Android activities are explicitly resizable, do not require a touchscreen, handle common window/orientation/keyboard configuration changes, and provide Ctrl+Enter / Ctrl+N shortcuts. Compose layouts constrain their maximum desktop width while filling smaller windows. Friend microphone hardware is optional.
+
+ChromeOS installation depends on the device supporting Android apps / Google Play. Local LiteRT-LM inference additionally requires a native runtime compatible with the Chromebook's Android ABI and an appropriate model. Cloud-provider mode is available when local inference is incompatible. Test real ARM and x86_64 Chromebook hardware before making a blanket compatibility claim.
+
 ## Data and security boundaries
 
 AVai is the source of truth for provider configurations and keys when Friend uses AVai. API keys must never travel through Binder, intents or Friend preferences in AVai mode. Requests are bounded and consent-checked.

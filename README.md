@@ -27,6 +27,17 @@ The custom CGL+ AI orchestration and context layer is implemented in Kotlin. The
 - Local chats, editable memory and imported conversation excerpts.
 - Uses AVai by default; optional direct provider mode remains available.
 
+## Chromebook / ChromeOS compatibility
+
+AVai and Friend are configured as resizable Android apps for ChromeOS:
+- Touchscreen hardware is optional; primary actions remain available through clickable controls.
+- Both activities respond to window-size, orientation, screen-layout and keyboard-attachment changes.
+- Main content is centered and width-limited on large displays, while retaining full-width layouts on phones.
+- Keyboard shortcuts: **Ctrl+Enter** sends a message and **Ctrl+N** starts a new chat in AVai and Friend.
+- Friend microphone hardware is optional; typing remains available when a microphone or speech-recognition service is unavailable.
+
+Install them on a Chromebook only when that device supports Google Play / Android apps. Local LiteRT-LM inference also depends on a compatible Android CPU ABI and model/runtime binaries. Cloud-provider mode is the alternative where a local model cannot load. ChromeOS compatibility does not guarantee that every imported model will perform well.
+
 ## No accounts or sign-in
 
 AVai and Friend do not use Firebase Authentication, Google sign-in, email/password sign-in, registration or CGL+ Accounts. Both apps open directly. Chat history, memory, model files and API-key profiles remain local. No cloud sync is included.
@@ -42,6 +53,10 @@ AVai uses Google's [LiteRT-LM Android runtime](https://ai.google.dev/edge/litert
 ## Build APKs
 
 Use AVai-debug-apk and Friend-debug-apk from the **same successful combined workflow run**. Install **AVai first, then Friend**. These are debug builds, not Play Store release builds.
+
+## Chromebook validation still required
+
+The manifests and layouts are prepared for ChromeOS, but an actual Chromebook runtime test is still required. Test a touchscreen and non-touchscreen device, resizable windows, keyboard/trackpad navigation, microphone availability and local-model ABI compatibility before declaring every Chromebook supported.
 
 ## Remaining work
 

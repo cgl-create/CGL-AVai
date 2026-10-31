@@ -79,12 +79,19 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isCtrlPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -563,9 +570,25 @@ private fun FriendApp(activity: MainActivity) {
         else -> "idle"
     }
 
-    Column(
-        modifier = Modifier.fillMaxSize().background(Ink).imePadding().padding(horizontal = 14.dp, vertical = 10.dp)
-    ) {
+    BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
+        val desktopWindow = maxWidth >= 840.dp
+        Column(
+            modifier = Modifier.fillMaxWidth()
+                .widthIn(max = if (desktopWindow) 1200.dp else 840.dp)
+                .fillMaxHeight()
+                .align(Alignment.TopCenter)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown || !event.isCtrlPressed) {
+                        false
+                    } else when (event.key) {
+                        Key.Enter -> { sendMessage(draft); true }
+                        Key.N -> { startNewFriendChat(); true }
+                        else -> false
+                    }
+                }
+                .imePadding()
+                .padding(horizontal = if (desktopWindow) 24.dp else 14.dp, vertical = 10.dp)
+        ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -626,7 +649,7 @@ private fun FriendApp(activity: MainActivity) {
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 8.dp)
             ) {
-                FriendAvatar(state = avatarState)
+                FriendAvatar(state = avatarState, size = if (desktopWindow) 154.dp else 190.dp)
                 Text(
                     when (avatarState) {
                         "listening" -> "I'm listening."
@@ -763,12 +786,13 @@ private fun FriendApp(activity: MainActivity) {
                 store.putString("voice_replies", voiceReplies.toString())
                 if (!voiceReplies) { activity.stopSpeaking(); speaking = false }
             }) { Text(if (voiceReplies) "🔊 Voice replies on" else "🔇 Voice replies off", color = Quiet, fontSize = 11.sp) }
-            Text("Local memory · provider API use may be billed", color = Quiet, fontSize = 9.sp)
+            Text(if (desktopWindow) "Ctrl+Enter send · Ctrl+N new chat" else "Local memory · provider API use may be billed", color = Quiet, fontSize = 9.sp)
         }
         Text(
             "Friend is an AI companion, not a therapist. Your chosen provider receives the messages and memory sent to it.",
             color = Quiet, fontSize = 9.sp, lineHeight = 12.sp, modifier = Modifier.padding(top = 1.dp, bottom = 2.dp)
         )
+        }
     }
 
     if (chatListOpen) {
@@ -864,7 +888,7 @@ private fun FriendApp(activity: MainActivity) {
 }
 
 @Composable
-private fun FriendAvatar(state: String) {
+private fun FriendAvatar(state: String, size: Dp = 190.dp) {
     val transition = rememberInfiniteTransition(label = "friend-features")
     val floatY by transition.animateFloat(
         initialValue = -3f,
@@ -898,7 +922,7 @@ private fun FriendAvatar(state: String) {
     val speaking = state == "speaking"
     val thinking = state == "thinking"
 
-    Canvas(Modifier.size(190.dp)) {
+    Canvas(Modifier.size(size)) {
         val cx = size.width / 2f
         val baseY = size.height / 2f + floatY * (size.minDimension / 160f)
         val unit = size.minDimension / 160f
