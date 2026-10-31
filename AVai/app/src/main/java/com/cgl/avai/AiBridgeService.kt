@@ -62,11 +62,6 @@ class AiBridgeService : Service() {
                 reply(callback, error = "The message was empty.")
                 return
             }
-            val grantAllowed = consumeOneRequestOrCheckPersistentGrant()
-            if (!grantAllowed) {
-                reply(callback, error = "Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
-                return
-            }
             val friendChatId = input.getString(AiBridgeProtocol.KEY_CHAT_ID).orEmpty().take(64)
             val history = parseHistory(input.getString(AiBridgeProtocol.KEY_HISTORY_JSON).orEmpty()).takeLast(24)
             val tone = input.getString(AiBridgeProtocol.KEY_TONE).orEmpty().take(80).ifBlank { "clear, calm and helpful" }
@@ -92,6 +87,10 @@ class AiBridgeService : Service() {
                     }
                     if (provider == AIProvider.LOCAL && store.getString("local_model_path").isBlank()) {
                         throw IllegalStateException("Choose a .litertlm offline model in AVai → Settings before asking Friend.")
+                    }
+                    // Validate configuration before consuming an Allow once grant.
+                    if (!consumeOneRequestOrCheckPersistentGrant()) {
+                        throw IllegalStateException("Friend is not authorised yet. Open Friend → Connect to AVai and approve access.")
                     }
                     val model = requestedModel.ifBlank {
                         store.getString("model_" + provider.name)
