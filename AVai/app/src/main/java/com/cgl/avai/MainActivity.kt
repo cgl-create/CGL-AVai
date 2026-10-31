@@ -264,8 +264,8 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
     BoxWithConstraints(Modifier.fillMaxSize().background(Ink)) {
         val desktopWindow = maxWidth >= 840.dp
         Column(
-            Modifier.fillMaxWidth()
-                .widthIn(max = if (desktopWindow) 1180.dp else 840.dp)
+            Modifier.widthIn(max = if (desktopWindow) 1180.dp else 840.dp)
+                .fillMaxWidth()
                 .fillMaxHeight()
                 .align(Alignment.TopCenter)
                 .onPreviewKeyEvent { event ->
