@@ -36,6 +36,21 @@ jobs:
       - name: Build debug APK
         working-directory: AVai
         run: gradle --no-daemon :app:assembleDebug
+      - name: Verify AVai native runtime supports ARM64 and x86_64 Chromebooks
+        run: |
+          APK="AVai/app/build/outputs/apk/debug/app-debug.apk"
+          unzip -Z1 "$APK" > /tmp/avai-apk-contents.txt
+          for abi in arm64-v8a x86_64; do
+            grep -Fxq "lib/$abi/liblitertlm_jni.so" /tmp/avai-apk-contents.txt || {
+              echo "::error::LiteRT-LM JNI library missing for $abi"
+              exit 1
+            }
+            grep -Fxq "lib/$abi/libLiteRt.so" /tmp/avai-apk-contents.txt || {
+              echo "::error::LiteRT runtime missing for $abi"
+              exit 1
+            }
+          done
+          echo "AVai includes LiteRT-LM native libraries for ARM64 and x86_64."
       - uses: actions/upload-artifact@v4
         with:
           name: AVai-debug-apk

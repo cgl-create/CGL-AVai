@@ -586,6 +586,9 @@ private fun FriendApp(activity: MainActivity) {
                     } else when (event.key) {
                         Key.Enter -> { sendMessage(draft); true }
                         Key.N -> { startNewFriendChat(); true }
+                        Key.H -> { chatSessions = loadFriendSessions(store.getString("chat_sessions", "[]")); chatListOpen = true; true }
+                        Key.M -> { memoryOpen = true; true }
+                        Key.Comma -> { settingsOpen = true; true }
                         else -> false
                     }
                 }
@@ -995,7 +998,7 @@ private fun MessageBubble(message: ChatMessage) {
                 bottomEnd = if (isUser) 5.dp else 17.dp,
                 bottomStart = if (isUser) 17.dp else 5.dp
             ),
-            modifier = Modifier.fillMaxWidth(0.88f)
+            modifier = Modifier.fillMaxWidth(0.88f).widthIn(max = 760.dp)
         ) {
             Text(
                 text = message.text,

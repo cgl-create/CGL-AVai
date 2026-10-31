@@ -22,6 +22,13 @@
             android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboardHidden"
             android:exported="true"
             android:windowSoftInputMode="adjustResize">
+            <!-- ChromeOS freeform launch preferences; the user can still resize the window. -->
+            <meta-data
+                android:name="WindowManagerPreference:FreeformWindowSize"
+                android:value="maximize" />
+            <meta-data
+                android:name="WindowManagerPreference:FreeformWindowOrientation"
+                android:value="landscape" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />

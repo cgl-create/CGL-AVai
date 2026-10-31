@@ -274,6 +274,12 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
                     } else when (event.key) {
                         Key.Enter -> { send(); true }
                         Key.N -> { startNewChat(); true }
+                        Key.H -> {
+                            sessions = loadSessions(store.getString("chat_sessions", "[]"))
+                            historyOpen = true
+                            true
+                        }
+                        Key.Comma -> { settingsOpen = true; true }
                         else -> false
                     }
                 }
@@ -335,7 +341,11 @@ private fun AVaiApp(store: SecureStore, launchedForConsent: Boolean) {
             items(chats) { message ->
                 Column(Modifier.fillMaxWidth(), horizontalAlignment = if (message.role == "user") Alignment.End else Alignment.Start) {
                     Text(if (message.role == "user") "YOU" else "AVAI", color = Gold, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-                    Surface(color = if (message.role == "user") Color(0xFF34301F) else Panel, shape = RoundedCornerShape(16.dp)) {
+                    Surface(
+                        modifier = Modifier.widthIn(max = 780.dp),
+                        color = if (message.role == "user") Color(0xFF34301F) else Panel,
+                        shape = RoundedCornerShape(16.dp)
+                    ) {
                         Text(message.text, Modifier.padding(12.dp), color = Paper, fontSize = 14.sp)
                     }
                 }

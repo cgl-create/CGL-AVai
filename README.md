@@ -50,6 +50,22 @@ The Messenger bridge uses a signature-level permission, verifies caller UID/pack
 
 AVai uses Google's [LiteRT-LM Android runtime](https://ai.google.dev/edge/litert-lm/android). Import a compatible `.litertlm` model from a trusted publisher and read its licence and device requirements. The local SHA-256 fingerprint is not proof of publisher authenticity. File size is not runtime RAM usage. Imported weights are not represented as CGL+-trained weights.
 
+
+## Chromebook / ChromeOS support
+
+AVai and Friend are configured as resizable Android apps for ChromeOS:
+- Touchscreen is optional; Friend's microphone hardware is optional too.
+- ChromeOS requests a maximized landscape starting window. Users can still resize and reposition either app.
+- Both apps support mouse/trackpad clicking and scrolling, plus keyboard shortcuts:
+  - **Ctrl+Enter** — send the current message
+  - **Ctrl+N** — start a new chat
+  - **Ctrl+H** — open AVai history / Friend chats
+  - **Ctrl+,** — open Settings
+  - **Ctrl+M** — open Friend Memory
+- AVai's build workflow verifies that its LiteRT-LM JNI runtime is packaged for both **arm64-v8a** and **x86_64**. This covers the two main 64-bit Chromebook CPU families without relying on ARM translation.
+
+Install the universal debug APKs from the combined workflow on a Chromebook that supports Android apps. Offline model speed and compatibility still depend on the Chromebook's RAM, CPU and the selected model; test the selected `.litertlm` model on the actual device. Cloud-provider connections remain an alternative. A successful CI build is not a substitute for testing the apps on both an ARM64 and an x86_64 Chromebook, including a touchscreen and a non-touchscreen device.
+
 ## Build APKs
 
 Use AVai-debug-apk and Friend-debug-apk from the **same successful combined workflow run**. Install **AVai first, then Friend**. These are debug builds, not Play Store release builds.
